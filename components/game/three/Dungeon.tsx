@@ -58,14 +58,21 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
   const bricks = useBricks();
   const doorRef = useRef<THREE.Group>(null);
   const treasureLight = useRef<THREE.PointLight>(null);
+  const openTimer = useRef(0);
   const open = lockStatus === 'OPEN';
 
   useFrame((_, delta) => {
+    // La puerta espera a que la llave termine de girar en el ojo
+    // (~1 s en Key3D) y abre HACIA ADENTRO (+y), hacia la sala del
+    // tesoro: así el jugador ve la cara de la cerradura al girar y
+    // la hoja no invade la cámara.
+    openTimer.current = open ? openTimer.current + delta : 0;
+    const swing = open && openTimer.current > 1.05;
     if (doorRef.current) {
       doorRef.current.rotation.y = THREE.MathUtils.damp(
         doorRef.current.rotation.y,
-        open ? -1.45 : 0,
-        open ? 2.6 : 8,
+        swing ? 1.45 : 0,
+        swing ? 2.6 : 8,
         delta
       );
     }

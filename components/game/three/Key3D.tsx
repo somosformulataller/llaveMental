@@ -130,7 +130,8 @@ export default function Key3D({ id, status, base, size, hidden, interactive, onK
       }
     } else if (status === 'FLYING') {
       p.lerp(KEYHOLE_TARGET, 1 - Math.exp(-5.5 * delta));
-      outer.rotation.x = THREE.MathUtils.damp(outer.rotation.x, -Math.PI / 2, 6, delta);
+      // +π/2: los dientes apuntan hacia el ojo y la anilla hacia la cámara
+      outer.rotation.x = THREE.MathUtils.damp(outer.rotation.x, Math.PI / 2, 6, delta);
       outer.rotation.z = THREE.MathUtils.damp(outer.rotation.z, 0, 6, delta);
       outer.rotation.y = THREE.MathUtils.damp(outer.rotation.y, 0, 6, delta);
       outer.scale.setScalar(THREE.MathUtils.damp(outer.scale.x, size, 9, delta));
@@ -139,15 +140,16 @@ export default function Key3D({ id, status, base, size, hidden, interactive, onK
       p.x = THREE.MathUtils.damp(p.x, KEYHOLE_TARGET.x, 6, delta);
       p.y = THREE.MathUtils.damp(p.y, KEYHOLE_TARGET.y, 6, delta);
       p.z = THREE.MathUtils.damp(p.z, KEYHOLE_TARGET.z - 0.12, 6, delta);
-      outer.rotation.x = THREE.MathUtils.damp(outer.rotation.x, -Math.PI / 2, 8, delta);
+      outer.rotation.x = THREE.MathUtils.damp(outer.rotation.x, Math.PI / 2, 8, delta);
       outer.rotation.z = 0;
-      // Girar la llave dentro del ojo y desvanecerla al abrirse la puerta
+      // Girar la llave dentro del ojo y desvanecerla ANTES de que la
+      // puerta empiece a abrirse (la puerta espera ~1.05 s en Dungeon)
       inner.rotation.y = THREE.MathUtils.damp(inner.rotation.y, Math.PI / 2, 5, delta);
       for (const m of mats) {
         m.emissive.lerp(CORRECT_EMISSIVE, k);
         m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, 1.4, 5, delta);
-        if (turnTimer.current > 1.1) {
-          m.opacity = THREE.MathUtils.damp(m.opacity, 0, 4, delta);
+        if (turnTimer.current > 0.75) {
+          m.opacity = THREE.MathUtils.damp(m.opacity, 0, 5, delta);
         }
       }
     } else if (status === 'BROKEN') {
