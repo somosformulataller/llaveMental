@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 interface TryKeyBody {
   session_id: string;
   key_id: number;
 }
 
+// Intento de llave. La lógica RTP/RNG NO cambia: el destino quedó
+// sellado al comprar el ticket (errors_remaining). Las escrituras
+// pasan por el cliente privilegiado porque el navegador ya no puede
+// tocar las tablas del juego; el premio se acredita con un RPC.
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // 1. Verify auth
+    // 1. Verificar sesión
     const {
       data: { user },
       error: authError,
@@ -20,7 +25,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    // 2. Parse body
+    // 2. Parámetros
     const body: TryKeyBody = await req.json();
     const { session_id, key_id } = body;
 
@@ -28,7 +33,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
     }
 
-    // 3. Fetch session — verify ownership and status
+    // 3. Sesión: propiedad y estado (lectura con RLS)
     const { data: session, error: sessionError } = await supabase
       .from('game_sessions')
       .select('*')
@@ -44,7 +49,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Verify key not already tried
+    // 4. ¿Llave repetida?
     const keysTried: number[] = session.keys_tried || [];
     if (keysTried.includes(key_id)) {
       return NextResponse.json(
@@ -54,37 +59,55 @@ export async function POST(req: NextRequest) {
     }
 
     const updatedKeysTried = [...keysTried, key_id];
+    const admin = createAdminClient();
 
-    // 5. Determine outcome based on pre-determined RNG result
+    // 5. Resolver según el destino predeterminado por el RNG
     const errorsRemaining: number = session.errors_remaining;
     const currentVault: number = parseFloat(session.current_vault);
 
-    // === CORE LOGIC: The fate was sealed when the ticket was bought ===
+    // === LÓGICA CENTRAL: el destino se selló al comprar el ticket ===
     if (errorsRemaining > 0) {
-      // This key FAILS — decrement counter
+      // Esta llave FALLA — decrementar contador
       const newVault = currentVault - 2;
       const newErrorsRemaining = errorsRemaining - 1;
+      const gameOver = newVault <= 0;
 
-      await supabase
+      await admin
         .from('game_sessions')
         .update({
           errors_remaining: newErrorsRemaining,
           current_vault: newVault,
           keys_tried: updatedKeysTried,
+          // Pozo agotado = partida perdida: la sesión se CIERRA aquí
+          // para que no quede una partida "activa" imposible de
+          // reanudar (causaba "Sesión no encontrada o ya completada").
+          ...(gameOver
+            ? { game_status: 'COMPLETED', completed_at: new Date().toISOString() }
+            : {}),
         })
         .eq('id', session_id);
+
+      if (gameOver) {
+        await admin.from('game_history').insert({
+          player_id: user.id,
+          session_id: session_id,
+          payout: 0,
+          keys_tried_count: updatedKeysTried.length,
+        });
+        await admin.from('app_events').insert({ player_id: user.id, event_type: 'game_lose' });
+      }
 
       return NextResponse.json({
         success: false,
         vault: newVault,
         animation: 'KEY_BROKEN',
+        game_over: gameOver,
       });
     } else {
-      // errors_remaining === 0: This key SUCCEEDS — reveal pre-determined payout
+      // errors_remaining === 0: esta llave ABRE — revelar el premio
       const finalPayout = parseFloat(session.target_payout);
 
-      // Mark session as completed
-      await supabase
+      await admin
         .from('game_sessions')
         .update({
           game_status: 'COMPLETED',
@@ -94,30 +117,20 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', session_id);
 
-      // Credit player account
-      const { data: player } = await supabase
-        .from('players')
-        .select('balance, total_won')
-        .eq('id', user.id)
-        .single();
+      // Acreditar el premio al saldo retirable (RPC atómico)
+      const { error: prizeError } = await admin.rpc('credit_prize', {
+        p_player: user.id,
+        p_payout: finalPayout,
+      });
+      if (prizeError) console.error('credit_prize error:', prizeError);
 
-      if (player) {
-        await supabase
-          .from('players')
-          .update({
-            balance: parseFloat(player.balance) + finalPayout,
-            total_won: parseFloat(player.total_won) + finalPayout,
-          })
-          .eq('id', user.id);
-      }
-
-      // Log to game_history
-      await supabase.from('game_history').insert({
+      await admin.from('game_history').insert({
         player_id: user.id,
         session_id: session_id,
         payout: finalPayout,
         keys_tried_count: updatedKeysTried.length,
       });
+      await admin.from('app_events').insert({ player_id: user.id, event_type: 'game_win' });
 
       return NextResponse.json({
         success: true,

@@ -1,22 +1,20 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import GameScene from './GameScene';
 import VaultCounter from './VaultCounter';
 import WinModal from './WinModal';
 import LoseModal from './LoseModal';
-import { GameStatus, KeyStatus, LockStatus, Player } from '@/types/game';
+import BuyTicketsModal from '@/components/payments/BuyTicketsModal';
+import { usePlayer } from '@/components/providers/PlayerProvider';
+import { GameStatus, KeyStatus, LockStatus } from '@/types/game';
 import { TOTAL_KEYS, INITIAL_VAULT } from '@/lib/game/constants';
 
-interface GameBoardProps {
-  player: Player | null;
-  playerLoading?: boolean;
-  onBalanceChange: (newBalance: number) => void;
-}
+export default function GameBoard() {
+  const { player, isLoading: playerLoading, updateBalance, updatePlayer, refresh } = usePlayer();
 
-export default function GameBoard({ player, playerLoading = false, onBalanceChange }: GameBoardProps) {
   // Game state
   const [gameStatus, setGameStatus] = useState<GameStatus>('IDLE');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -29,6 +27,7 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
   const [isDecreasing, setIsDecreasing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [buyOpen, setBuyOpen] = useState(false);
 
   // Audio refs
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -71,14 +70,45 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
     });
   }, [playTone]);
 
-  // Start a new game
-  const handleBuyTicket = async () => {
+  // Restaura una partida con su estado real: pozo y llaves probadas
+  const resumeSession = useCallback((id: string, vaultValue: number, keysTried: number[]) => {
+    setSessionId(id);
+    setVault(vaultValue);
+    setGameStatus('ACTIVE');
+    setLockStatus('IDLE');
+    setKeyStatuses(() => {
+      const next: KeyStatus[] = Array(TOTAL_KEYS).fill('IDLE');
+      for (const k of keysTried) {
+        if (k >= 0 && k < TOTAL_KEYS) next[k] = 'BROKEN';
+      }
+      return next;
+    });
+  }, []);
+
+  // Al entrar al juego: si hay una partida activa, se reanuda sola.
+  // El jugador puede salir de la app y volver cuando quiera.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/session', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled || !data.session) return;
+        resumeSession(data.session.session_id, data.session.vault, data.session.keys_tried);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeSession]);
+
+  // Empezar una partida (consume 1 ticket)
+  const handlePlay = async () => {
     if (!player) {
       setError('Debes iniciar sesión para jugar');
       return;
     }
-    if (player.balance < 2) {
-      setError('Saldo insuficiente. Necesitas al menos $2.00');
+    if ((player.tickets ?? 0) < 1) {
+      setBuyOpen(true);
       return;
     }
 
@@ -91,15 +121,15 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
 
       if (!res.ok) {
         if (res.status === 409 && data.session_id) {
-          // Resume existing session
-          setSessionId(data.session_id);
-          setVault(data.vault ?? INITIAL_VAULT);
-          setGameStatus('ACTIVE');
-          setKeyStatuses(Array(TOTAL_KEYS).fill('IDLE'));
-          setLockStatus('IDLE');
+          // Reanudar la partida existente con su estado completo
+          resumeSession(data.session_id, data.vault ?? INITIAL_VAULT, data.keys_tried ?? []);
           return;
         }
-        setError(data.error || 'Error al comprar ticket');
+        if (data.code === 'NO_TICKETS') {
+          setBuyOpen(true);
+          return;
+        }
+        setError(data.error || 'Error al iniciar la partida');
         return;
       }
 
@@ -108,7 +138,7 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
       setGameStatus('ACTIVE');
       setKeyStatuses(Array(TOTAL_KEYS).fill('IDLE'));
       setLockStatus('IDLE');
-      onBalanceChange(player.balance - 2);
+      if (typeof data.tickets === 'number') updatePlayer({ tickets: data.tickets });
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {
@@ -139,6 +169,17 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 404) {
+          // La sesión ya no existe (se completó en otra pestaña o
+          // quedó vieja): volver al inicio en limpio, sin trabarse.
+          setGameStatus('IDLE');
+          setSessionId(null);
+          setVault(INITIAL_VAULT);
+          setKeyStatuses(Array(TOTAL_KEYS).fill('IDLE'));
+          setLockStatus('IDLE');
+          refresh();
+          return;
+        }
         setError(data.error || 'Error al intentar la llave');
         setKeyStatuses((prev) => {
           const next = [...prev];
@@ -165,8 +206,8 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
           setIsDecreasing(false);
         }, 800);
 
-        // Check if vault is empty (game over)
-        if (data.vault <= 0) {
+        // Pozo agotado: fin de la partida
+        if (data.game_over || data.vault <= 0) {
           setTimeout(() => {
             setGameStatus('COMPLETED_LOSE');
             setFinalPayout(0);
@@ -184,7 +225,7 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
         setVault(data.payout);
 
         setTimeout(() => {
-          onBalanceChange(player!.balance + data.payout);
+          if (player) updateBalance(player.balance + data.payout);
         }, 1200);
 
         // Secuencia cinemática: la llave gira (~1s), la puerta se abre
@@ -214,9 +255,11 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
     setLockStatus('IDLE');
     setFinalPayout(0);
     setError(null);
+    refresh();
   };
 
   const isGameActive = gameStatus === 'ACTIVE';
+  const tickets = player?.tickets ?? 0;
 
   // Tesoro que se revela al ganar: se deriva del id de sesión, así
   // cada partida muestra una de las 5 variantes distintas.
@@ -284,7 +327,7 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
         )}
       </AnimatePresence>
 
-      {/* Idle state: Buy ticket button */}
+      {/* Idle state: jugar / comprar tickets */}
       {gameStatus === 'IDLE' && (
         <motion.div
           className="idle-section"
@@ -294,21 +337,34 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
           <p className="idle-subtitle">
             Elige la llave correcta y gana hasta <strong>$10.00</strong>
           </p>
-          <p className="idle-cost">Costo del ticket: <strong>$2.00</strong></p>
+          {player && (
+            <p className="idle-cost">
+              🎟️ Tienes <strong>{tickets}</strong> ticket{tickets !== 1 ? 's' : ''} · 1 partida = 1 ticket
+            </p>
+          )}
           {player || playerLoading ? (
-            <motion.button
-              className="btn-buy"
-              onClick={handleBuyTicket}
-              disabled={isLoading || playerLoading || (player?.balance ?? 0) < 2}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {isLoading || playerLoading ? (
-                <span className="loading-dots">Cargando...</span>
-              ) : (
-                <>🎟️ Comprar Ticket — $2.00</>
+            <>
+              <motion.button
+                className="btn-buy"
+                onClick={handlePlay}
+                disabled={isLoading || playerLoading}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {isLoading || playerLoading ? (
+                  <span className="loading-dots">Cargando...</span>
+                ) : tickets > 0 ? (
+                  <>🔑 Jugar — 1 ticket</>
+                ) : (
+                  <>🎟️ Comprar tickets</>
+                )}
+              </motion.button>
+              {tickets > 0 && (
+                <button className="btn-buy-more" onClick={() => setBuyOpen(true)}>
+                  Comprar más tickets
+                </button>
               )}
-            </motion.button>
+            </>
           ) : (
             <Link href="/auth/login" className="btn-buy" prefetch>
               🔐 Iniciar sesión para jugar
@@ -338,6 +394,8 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
           <LoseModal onPlayAgain={handlePlayAgain} />
         )}
       </AnimatePresence>
+
+      <BuyTicketsModal open={buyOpen} onClose={() => setBuyOpen(false)} />
     </div>
   );
 }

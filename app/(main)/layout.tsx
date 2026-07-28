@@ -11,7 +11,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <Header />
       <div className="app-content">{children}</div>
       <footer className="game-footer">
-        <p>🗝️ La Llave Correcta · Juego de entretenimiento · Solo créditos demo</p>
+        <p>🗝️ La Llave Correcta · Juego de entretenimiento · Premios por Pago Móvil</p>
       </footer>
       <PwaInstallBanner />
     </div>

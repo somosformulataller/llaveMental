@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
 import { drawPayoutTier } from '@/lib/game/rng';
-import { TICKET_COST, INITIAL_VAULT } from '@/lib/game/constants';
+import { INITIAL_VAULT } from '@/lib/game/constants';
 
+// Inicia una partida consumiendo 1 ticket. La lógica RTP/RNG no
+// cambia: el destino de la partida se sella aquí con drawPayoutTier
+// (servidor). Lo único distinto al modo demo es el "ledger": ya no
+// se descuenta saldo — se consume un ticket comprado.
 export async function POST() {
   try {
     const supabase = await createClient();
 
-    // 1. Verify user is authenticated
+    // 1. Verificar sesión
     const {
       data: { user },
       error: authError,
@@ -17,10 +22,17 @@ export async function POST() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    // 2. Get player's current balance
+    if (!isAdminClientConfigured()) {
+      return NextResponse.json(
+        { error: 'El juego no está configurado todavía (falta SUPABASE_SECRET_KEY).' },
+        { status: 503 }
+      );
+    }
+
+    // 2. Tickets del jugador
     const { data: player, error: playerError } = await supabase
       .from('players')
-      .select('id, balance, total_wagered')
+      .select('id, tickets')
       .eq('id', user.id)
       .single();
 
@@ -28,34 +40,42 @@ export async function POST() {
       return NextResponse.json({ error: 'Jugador no encontrado' }, { status: 404 });
     }
 
-    // 3. Check sufficient balance
-    if (Number(player.balance) < TICKET_COST) {
-      return NextResponse.json(
-        { error: 'Saldo insuficiente. Necesitas $2.00 para jugar.' },
-        { status: 400 }
-      );
-    }
-
-    // 4. Check if player has an active session already
+    // 3. ¿Ya hay una partida activa? Se reanuda con su estado COMPLETO
+    //    (pozo real y llaves probadas), no se cobra otro ticket.
     const { data: existingSession } = await supabase
       .from('game_sessions')
-      .select('id')
+      .select('id, current_vault, keys_tried')
       .eq('player_id', user.id)
       .eq('game_status', 'ACTIVE')
-      .single();
+      .maybeSingle();
 
     if (existingSession) {
       return NextResponse.json(
-        { error: 'Ya tienes una sesión activa', session_id: existingSession.id, vault: INITIAL_VAULT },
+        {
+          error: 'Ya tienes una partida activa',
+          session_id: existingSession.id,
+          vault: Number(existingSession.current_vault),
+          keys_tried: existingSession.keys_tried ?? [],
+        },
         { status: 409 }
       );
     }
 
-    // 5. RNG: Select payout tier (SERVER-SIDE — not manipulable by client)
+    // 4. ¿Tiene tickets?
+    if ((player.tickets ?? 0) < 1) {
+      return NextResponse.json(
+        { error: 'No tienes tickets. Compra tickets para jugar.', code: 'NO_TICKETS' },
+        { status: 400 }
+      );
+    }
+
+    // 5. RNG: seleccionar el destino de la partida (SOLO servidor)
     const payoutTier = drawPayoutTier();
 
-    // 6. Create game session in DB
-    const { data: session, error: sessionError } = await supabase
+    // 6. Crear la sesión (cliente privilegiado: el navegador ya no
+    //    puede escribir game_sessions)
+    const admin = createAdminClient();
+    const { data: session, error: sessionError } = await admin
       .from('game_sessions')
       .insert({
         player_id: user.id,
@@ -71,27 +91,33 @@ export async function POST() {
 
     if (sessionError || !session) {
       console.error('Session creation error:', sessionError);
-      return NextResponse.json({ error: 'Error al crear sesión' }, { status: 500 });
+      return NextResponse.json({ error: 'Error al crear la partida' }, { status: 500 });
     }
 
-    // 7. Deduct ticket cost from player balance
-    const { error: balanceError } = await supabase
-      .from('players')
-      .update({
-        balance: Number(player.balance) - TICKET_COST,
-        total_wagered: Number(player.total_wagered) + TICKET_COST,
-      })
-      .eq('id', user.id);
+    // 7. Consumir el ticket (RPC atómico; suma total_wagered)
+    const { data: remainingTickets, error: spendError } = await admin.rpc('spend_ticket', {
+      p_player: user.id,
+    });
 
-    if (balanceError) {
-      // Rollback: delete the created session
-      await supabase.from('game_sessions').delete().eq('id', session.id);
-      return NextResponse.json({ error: 'Error al procesar el pago' }, { status: 500 });
+    if (spendError) {
+      // Rollback: borrar la sesión creada
+      await admin.from('game_sessions').delete().eq('id', session.id);
+      if (spendError.message?.includes('SIN_TICKETS')) {
+        return NextResponse.json(
+          { error: 'No tienes tickets. Compra tickets para jugar.', code: 'NO_TICKETS' },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json({ error: 'Error al usar el ticket' }, { status: 500 });
     }
+
+    // Analítica: partida iniciada
+    await admin.from('app_events').insert({ player_id: user.id, event_type: 'game_start' });
 
     return NextResponse.json({
       session_id: session.id,
       vault: INITIAL_VAULT,
+      tickets: Number(remainingTickets),
     });
   } catch (err) {
     console.error('buy-ticket error:', err);

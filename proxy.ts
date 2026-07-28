@@ -32,11 +32,14 @@ export async function proxy(request: NextRequest) {
   // IMPORTANT: Do not add logic between createServerClient and getUser
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Protect /game and /admin — redirect to login if not authenticated.
-  // (The admin ROLE check happens server-side in /api/admin/stats + RLS.)
+  // Protect /game, /admin, /billetera and /ranking — redirect to login
+  // if not authenticated. (The admin ROLE check happens server-side in
+  // /api/admin/* + RLS.)
   const protectedRoute =
     request.nextUrl.pathname.startsWith('/game') ||
-    request.nextUrl.pathname.startsWith('/admin');
+    request.nextUrl.pathname.startsWith('/admin') ||
+    request.nextUrl.pathname.startsWith('/billetera') ||
+    request.nextUrl.pathname.startsWith('/ranking');
   if (!user && protectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';

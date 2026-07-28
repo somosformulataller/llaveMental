@@ -10,7 +10,7 @@ export default function HomePage() {
     <div className="landing-page">
       <section className="landing-hero">
         {/* Badge */}
-        <div className="hero-badge">🏰 Demo Gratuito · $100 en créditos al registrarte</div>
+        <div className="hero-badge">🏰 Premios reales · Paga con Pago Móvil</div>
 
         {/* Title */}
         <div>
@@ -32,8 +32,8 @@ export default function HomePage() {
           </Link>
           <p className="cta-note">
             {player
-              ? `Saldo disponible: $${player.balance.toFixed(2)}`
-              : 'Gratis · $100 en créditos demo al registrarse'}
+              ? `🎟️ ${player.tickets ?? 0} tickets · 💰 $${player.balance.toFixed(2)} en premios`
+              : 'Regístrate gratis · 1 ticket = $2.00 por Pago Móvil'}
           </p>
         </div>
 
@@ -63,7 +63,8 @@ export default function HomePage() {
             <span className="step-number">Paso 1</span>
             <p className="step-title">Compra un Ticket</p>
             <p className="step-desc">
-              Por $2 obtienes un intento para abrir la puerta del tesoro.
+              Paga por Pago Móvil ($2 por ticket): tu pago se valida al
+              instante y recibes tus tickets.
             </p>
           </div>
           <div className="step-card">
@@ -79,7 +80,8 @@ export default function HomePage() {
             <span className="step-number">Paso 3</span>
             <p className="step-title">¡Cobra tu Premio!</p>
             <p className="step-desc">
-              Cuando encuentres la llave correcta, el pozo restante es tuyo.
+              Cuando encuentres la llave correcta, el pozo restante es tuyo:
+              retíralo por Pago Móvil o cámbialo por más tickets.
             </p>
           </div>
         </div>

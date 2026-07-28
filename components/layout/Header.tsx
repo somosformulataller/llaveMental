@@ -9,6 +9,16 @@ export default function Header() {
   const { player, isLoading, isAdmin, signOut } = usePlayer();
   const pathname = usePathname();
 
+  const navLink = (href: string, label: string) => (
+    <Link
+      href={href}
+      className={`nav-link ${pathname === href ? 'nav-link-active' : ''}`}
+      prefetch
+    >
+      {label}
+    </Link>
+  );
+
   return (
     <header className="game-header">
       <motion.div
@@ -21,22 +31,10 @@ export default function Header() {
           <span className="brand-name">La Llave Correcta</span>
         </Link>
         <nav className="header-nav">
-          <Link
-            href="/game"
-            className={`nav-link ${pathname === '/game' ? 'nav-link-active' : ''}`}
-            prefetch
-          >
-            Jugar
-          </Link>
-          {isAdmin && (
-            <Link
-              href="/admin"
-              className={`nav-link ${pathname === '/admin' ? 'nav-link-active' : ''}`}
-              prefetch
-            >
-              Admin
-            </Link>
-          )}
+          {navLink('/game', 'Jugar')}
+          {player && navLink('/ranking', 'Ranking')}
+          {player && navLink('/billetera', 'Billetera')}
+          {isAdmin && navLink('/admin', 'Admin')}
         </nav>
       </motion.div>
 
@@ -47,10 +45,14 @@ export default function Header() {
       >
         {player ? (
           <>
-            <div className="wallet-badge">
+            <Link href="/billetera" className="wallet-badge" prefetch>
+              <span className="wallet-icon">🎟️</span>
+              <span className="wallet-amount">{player.tickets ?? 0}</span>
+            </Link>
+            <Link href="/billetera" className="wallet-badge" prefetch>
               <span className="wallet-icon">💰</span>
               <span className="wallet-amount">${player.balance.toFixed(2)}</span>
-            </div>
+            </Link>
             <div className="user-badge">
               <span>
                 {isAdmin ? '👑 ' : ''}
