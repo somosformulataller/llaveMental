@@ -85,7 +85,7 @@ Y en Supabase (**Auth → URL Configuration**) agrega la URL de producción:
 
 ## Estado del proyecto (28 jul 2026)
 
-**Hecho:** juego completo (RNG server-authoritative, sonido), **experiencia 3D medieval** (mazmorra, puerta, cerradura y llaves en React Three Fiber, tipografía Cinzel), login/registro de jugador (email + Google), rol admin con panel `/admin` (métricas en vivo, RTP real, jugadores, partidas), redirección por rol, arquitectura SPA (pantallas estáticas instantáneas, shell persistente, transiciones animadas), PWA (manifest + service worker + banner de instalación). `lint`, `tsc` y `build` pasan sin errores.
+**Hecho:** juego completo (RNG server-authoritative, sonido), **experiencia 3D medieval** (mazmorra, puerta, cerradura y llaves en React Three Fiber, tipografía Cinzel), login/registro de jugador (email/contraseña), rol admin con panel `/admin` (métricas en vivo, RTP real, jugadores, partidas), redirección por rol, arquitectura SPA (pantallas estáticas instantáneas, shell persistente, transiciones animadas), PWA (manifest + service worker + banner de instalación). `lint`, `tsc` y `build` pasan sin errores.
 
 **Configurado:** proyecto Supabase con migraciones `001` + `002` ejecutadas y "Confirm email" desactivado · credenciales en `.env.local` (conexión verificada) · **usuario de prueba jugador**: `jugador.prueba.llave@gmail.com` / `Prueba123!` (login verificado, $100 demo) · repo en GitHub `somosformulataller/llaveMental` (rama `master`) conectado a Vercel con auto-deploy en cada push · **producción ● Ready: `https://llave-mental.vercel.app`** · servidor local en `http://localhost:3001`.
 

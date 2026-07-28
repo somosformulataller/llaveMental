@@ -498,7 +498,7 @@ npm run build
 | Desactivar "Confirm email" | ✅ | Verificado por API (`mailer_autoconfirm: true`) — los registros entran sin confirmar correo |
 | Crear usuario de prueba (jugador) | ✅ | **`jugador.prueba.llave@gmail.com` / `Prueba123!`** — login verificado por API, perfil auto-creado con $100, rol `player`. Nota: Supabase rechaza dominios tipo `@example.com` |
 | Crear el usuario admin | ⬜ | Registrar la cuenta desde la app y promover con `UPDATE ... SET role='admin'` (SQL en la migración 002 y el README) |
-| Google OAuth (opcional) | ⬜ | Está desactivado (verificado). Auth → Providers → Google + credenciales de Google Cloud Console |
+| Google OAuth | ❌ | Descartado (28 jul 2026): se eliminó el botón "Continuar con Google" del login — la autenticación es solo email/contraseña |
 | URLs de producción en Auth | ⬜ | Auth → URL Configuration: Site URL `https://llave-mental.vercel.app` + Redirect `https://llave-mental.vercel.app/auth/callback` |
 
 ### Vercel — proyecto `formula-taller/llave-mental`
