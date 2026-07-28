@@ -15,6 +15,11 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const handleSignOut = () => {
+    setMenuOpen(false);
+    signOut();
+  };
+
   // Cerrar el desplegable al tocar fuera o con Escape
   useEffect(() => {
     if (!menuOpen) return;
@@ -83,6 +88,15 @@ export default function Header() {
                       {item.label}
                     </button>
                   ))}
+                  {/* Salir: SIEMPRE la última opción del menú */}
+                  <div className="menu-divider" />
+                  <button
+                    className="menu-item menu-item-danger"
+                    role="menuitem"
+                    onClick={handleSignOut}
+                  >
+                    🚪 Salir
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -98,10 +112,6 @@ export default function Header() {
               <span className="wallet-amount">${player.balance.toFixed(2)}</span>
             </Link>
           </div>
-
-          <button className="signout-btn" onClick={signOut}>
-            Salir
-          </button>
         </div>
       ) : (
         <div className="header-row">

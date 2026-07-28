@@ -1323,6 +1323,18 @@ a.wallet-badge {
   color: var(--gold-1);
 }
 
+.menu-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 4px 6px;
+}
+
+.menu-item-danger { color: var(--red-lose); }
+.menu-item-danger:hover {
+  background: rgba(255,71,87,0.1);
+  color: var(--red-lose);
+}
+
 /* Barra inferior de canje (Todo a tickets · stepper · Canjear) */
 .redeem-bar {
   display: flex;
