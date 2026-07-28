@@ -26,7 +26,7 @@ const cinzel = Cinzel({
 export const metadata: Metadata = {
   title: 'La Llave Correcta — ¿Puedes abrir la cerradura?',
   description:
-    'Juego de azar tipo scratch-card. Elige la llave correcta y gana hasta $10. RTP 98%, baja volatilidad. ¡Juega ahora!',
+    'Encuentra la llave correcta, abre la puerta del tesoro y gana hasta $10. ¡Juega ahora!',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

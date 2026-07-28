@@ -10,7 +10,7 @@ export default function HomePage() {
     <div className="landing-page">
       <section className="landing-hero">
         {/* Badge */}
-        <div className="hero-badge">🎰 RTP 98% · Baja Volatilidad · Demo Gratuito</div>
+        <div className="hero-badge">🏰 Demo Gratuito · $100 en créditos al registrarte</div>
 
         {/* Title */}
         <div>
@@ -40,8 +40,8 @@ export default function HomePage() {
         {/* Stats */}
         <div className="stats-grid">
           <div className="stat-card">
-            <div className="stat-value">98%</div>
-            <div className="stat-label">RTP</div>
+            <div className="stat-value">10</div>
+            <div className="stat-label">Llaves</div>
           </div>
           <div className="stat-card">
             <div className="stat-value">$10</div>
@@ -63,7 +63,7 @@ export default function HomePage() {
             <span className="step-number">Paso 1</span>
             <p className="step-title">Compra un Ticket</p>
             <p className="step-desc">
-              Por $2, el servidor determina secretamente tu premio potencial usando RNG.
+              Por $2 obtienes un intento para abrir la puerta del tesoro.
             </p>
           </div>
           <div className="step-card">

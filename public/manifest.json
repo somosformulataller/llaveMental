@@ -1,7 +1,7 @@
 {
   "name": "La Llave Correcta",
   "short_name": "LlaveCorrecta",
-  "description": "Juego tipo scratch-card. Elige la llave correcta y gana hasta $10. RTP 98%.",
+  "description": "Encuentra la llave correcta, abre la puerta del tesoro y gana hasta $10.",
   "start_url": "/game",
   "display": "standalone",
   "background_color": "#0D0F14",
