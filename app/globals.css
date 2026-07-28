@@ -100,6 +100,7 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-sm);
   padding: var(--space-md) var(--space-xl);
   background: var(--bg-surface-glass);
   backdrop-filter: blur(20px);
@@ -128,9 +129,26 @@ h1, h2, h3 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  /* Si no cabe, la marca se recorta con elipsis en vez de empujar
+     los botones fuera de la pantalla */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Los flex-children deben poder encogerse (min-width: 0) */
+.header-brand {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.brand-link {
+  min-width: 0;
 }
 
 .header-right {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: var(--space-md);
@@ -161,6 +179,18 @@ h1, h2, h3 {
   gap: var(--space-sm);
   color: var(--text-secondary);
   font-size: 0.9rem;
+}
+
+/* Nombres de usuario largos (emails) se recortan con elipsis */
+.user-badge span {
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.signout-btn {
+  white-space: nowrap;
 }
 
 .signout-btn {
@@ -936,21 +966,33 @@ h1, h2, h3 {
    ============================================ */
 @media (max-width: 600px) {
   .game-header {
-    padding: var(--space-sm) var(--space-md);
+    padding: var(--space-sm) var(--space-sm);
   }
 
-  .brand-name { font-size: 1.1rem; }
+  .brand-name { font-size: 1rem; }
 
+  .header-right { gap: var(--space-xs); }
 
-  .key-btn { padding: 6px 4px; }
+  .wallet-badge { padding: 4px 10px; }
 
-  .vault-amount { font-size: 2.5rem; }
+  .wallet-amount { font-size: 0.95rem; }
+
+  .nav-link { padding: 6px 8px; font-size: 0.85rem; }
+
+  .header-nav { margin-left: var(--space-xs); }
+
+  .vault-amount { font-size: 2.2rem; }
 
   .stats-grid { grid-template-columns: repeat(3, 1fr); }
 
   .modal-card { padding: var(--space-lg); }
 
   .game-header .user-badge span { display: none; }
+}
+
+/* Pantallas muy angostas: solo el icono de la marca */
+@media (max-width: 420px) {
+  .brand-name { display: none; }
 }
 
 
