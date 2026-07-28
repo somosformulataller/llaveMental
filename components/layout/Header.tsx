@@ -48,12 +48,17 @@ export default function Header() {
     router.push(path);
   };
 
-  const menuItems = [
-    { label: '👛 Canjear o retirar', path: '/billetera' },
-    { label: '🏆 Ranking', path: '/ranking' },
-    { label: '🔑 Jugar', path: '/game' },
-    ...(isAdmin ? [{ label: '👑 Admin', path: '/admin' }] : []),
-  ];
+  // El admin no juega: su menú no ofrece la pantalla de juego
+  const menuItems = isAdmin
+    ? [
+        { label: '👑 Admin', path: '/admin' },
+        { label: '🏆 Ranking', path: '/ranking' },
+      ]
+    : [
+        { label: '👛 Canjear o retirar', path: '/billetera' },
+        { label: '🏆 Ranking', path: '/ranking' },
+        { label: '🔑 Jugar', path: '/game' },
+      ];
 
   return (
     <header className="game-header">

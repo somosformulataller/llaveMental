@@ -8,7 +8,7 @@ import { TICKET_PRICE_USD } from '@/lib/payments/constants';
 // el saldo), stepper −/+ para canje manual y la relación en vivo
 // (1 ticket = $2 y cuánto saldo quedaría). Solo con sesión iniciada.
 export default function RedeemBar() {
-  const { player, refresh } = usePlayer();
+  const { player, isAdmin, refresh } = usePlayer();
   const [qty, setQty] = useState(1);
   const [redeeming, setRedeeming] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
@@ -18,7 +18,8 @@ export default function RedeemBar() {
   const q = Math.min(Math.max(1, qty), Math.max(1, maxRedeem));
   const canRedeem = maxRedeem >= 1;
 
-  if (!player) return null;
+  // El admin no juega ni canjea: la barra es solo para jugadores
+  if (!player || isAdmin) return null;
 
   const showFlash = (msg: string) => {
     setFlash(msg);

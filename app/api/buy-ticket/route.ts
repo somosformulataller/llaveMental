@@ -29,15 +29,23 @@ export async function POST() {
       );
     }
 
-    // 2. Tickets del jugador
+    // 2. Tickets y rol del jugador
     const { data: player, error: playerError } = await supabase
       .from('players')
-      .select('id, tickets')
+      .select('id, tickets, role')
       .eq('id', user.id)
       .single();
 
     if (playerError || !player) {
       return NextResponse.json({ error: 'Jugador no encontrado' }, { status: 404 });
+    }
+
+    // El administrador NO juega: evita mezclar la banca con el juego
+    if (player.role === 'admin') {
+      return NextResponse.json(
+        { error: 'La cuenta de administrador no puede jugar. Usa una cuenta de jugador.' },
+        { status: 403 }
+      );
     }
 
     // 3. ¿Ya hay una partida activa? Se reanuda con su estado COMPLETO
