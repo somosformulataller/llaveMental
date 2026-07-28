@@ -3,8 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import Lock from './Lock';
-import KeyGrid from './KeyGrid';
+import GameScene from './GameScene';
 import VaultCounter from './VaultCounter';
 import WinModal from './WinModal';
 import LoseModal from './LoseModal';
@@ -213,17 +212,45 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
   };
 
   const isGameActive = gameStatus === 'ACTIVE';
-  const isGameOver = gameStatus === 'COMPLETED_WIN' || gameStatus === 'COMPLETED_LOSE';
 
   return (
     <div className="game-board">
       {/* Vault Counter */}
       <VaultCounter amount={vault} isDecreasing={isDecreasing} />
 
-      {/* Lock */}
-      <div className="lock-section">
-        <Lock status={lockStatus} />
-      </div>
+      {/* Escena 3D: mazmorra, puerta, cerradura y llaves */}
+      <GameScene
+        lockStatus={lockStatus}
+        keyStatuses={keyStatuses}
+        interactive={isGameActive && !isLoading}
+        onKeyClick={handleKeyClick}
+      />
+
+      {/* Texto de estado de la cerradura */}
+      <AnimatePresence mode="wait">
+        {lockStatus === 'OPEN' && (
+          <motion.p
+            key="open-text"
+            className="lock-status-text lock-open"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            ✓ ¡ABIERTA!
+          </motion.p>
+        )}
+        {lockStatus === 'SHAKE' && (
+          <motion.p
+            key="shake-text"
+            className="lock-status-text lock-shake"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            ✗ Llave incorrecta
+          </motion.p>
+        )}
+      </AnimatePresence>
 
       {/* Error message */}
       <AnimatePresence>
@@ -280,13 +307,8 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
           animate={{ opacity: 1 }}
         >
           <p className="keys-instruction">
-            🗝️ Elige una llave para intentar abrir la cerradura
+            🗝️ Toca una llave para intentar abrir la cerradura
           </p>
-          <KeyGrid
-            keyStatuses={keyStatuses}
-            onKeyClick={handleKeyClick}
-            disabled={isLoading || isGameOver}
-          />
         </motion.div>
       )}
 

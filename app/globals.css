@@ -1275,3 +1275,62 @@ h1, h2, h3 {
   .header-nav { margin-left: var(--space-sm); }
   .admin-title { font-size: 1.5rem; }
 }
+
+/* ============================================
+   ESCENA 3D MEDIEVAL (React Three Fiber)
+   ============================================ */
+.scene3d-wrap {
+  position: relative;
+  width: 100%;
+  height: clamp(340px, 48vh, 540px);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid rgba(245, 197, 24, 0.18);
+  background: #0e0a07;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55), inset 0 0 60px rgba(0, 0, 0, 0.4);
+}
+
+.scene3d-wrap canvas {
+  display: block;
+  touch-action: manipulation;
+}
+
+.scene3d-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  height: 100%;
+  color: var(--text-muted);
+  font-family: var(--font-cinzel), serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+}
+
+.scene3d-loading-icon {
+  font-size: 2rem;
+  animation: torch-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes torch-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Tipografia medieval en la pantalla de juego */
+.vault-amount,
+.btn-buy,
+.lock-status-text {
+  font-family: var(--font-cinzel), var(--font-display), serif;
+}
+
+.keys-instruction,
+.idle-subtitle {
+  font-family: var(--font-cinzel), serif;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 640px) {
+  .scene3d-wrap { height: clamp(300px, 44vh, 420px); }
+}
