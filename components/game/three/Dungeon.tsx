@@ -2,15 +2,17 @@
 
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Instances, Instance, Sparkles } from '@react-three/drei';
+import { Instances, Instance } from '@react-three/drei';
 import * as THREE from 'three';
 import { LockStatus } from '@/types/game';
 import Torch from './Torch';
 import Lock3D from './Lock3D';
+import Treasure from './Treasure';
 import { DOOR_HINGE_X, seededRand } from './constants';
 
 interface DungeonProps {
   lockStatus: LockStatus;
+  treasureVariant: number;
 }
 
 interface Brick {
@@ -52,7 +54,7 @@ function useBricks(): Brick[] {
 
 const PLANK_COLORS = ['#57381f', '#4e3018', '#5c3c22', '#503319', '#553a20'];
 
-export default function Dungeon({ lockStatus }: DungeonProps) {
+export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
   const bricks = useBricks();
   const doorRef = useRef<THREE.Group>(null);
   const treasureLight = useRef<THREE.PointLight>(null);
@@ -130,40 +132,7 @@ export default function Dungeon({ lockStatus }: DungeonProps) {
         distance={10}
         decay={2}
       />
-      {open && (
-        <group position={[0, 0, -2.4]}>
-          {/* Montículo de oro */}
-          <mesh position={[0, 0.18, 0]}>
-            <sphereGeometry args={[0.55, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshStandardMaterial
-              color="#e8b23a"
-              metalness={0.8}
-              roughness={0.3}
-              emissive="#c98f1e"
-              emissiveIntensity={0.6}
-            />
-          </mesh>
-          <mesh position={[-0.5, 0.3, 0.2]} rotation={[0, 0.4, 0.2]}>
-            <boxGeometry args={[0.35, 0.4, 0.3]} />
-            <meshStandardMaterial
-              color="#7a5427"
-              metalness={0.3}
-              roughness={0.7}
-              emissive="#5e3d15"
-              emissiveIntensity={0.3}
-            />
-          </mesh>
-          <Sparkles
-            count={45}
-            position={[0, 1.1, 0.2]}
-            scale={[2.2, 2.2, 1.2]}
-            size={3.5}
-            speed={0.45}
-            color="#ffd873"
-            opacity={0.9}
-          />
-        </group>
-      )}
+      {open && <Treasure variant={treasureVariant} />}
 
       {/* ── Puerta (bisagra en el borde izquierdo) ── */}
       <group ref={doorRef} position={[DOOR_HINGE_X, 0, -0.05]}>

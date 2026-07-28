@@ -25,7 +25,7 @@ export default function Torch({ position, phase = 0 }: TorchProps) {
       flameRef.current.rotation.z = Math.sin(t * 5.1) * 0.08;
     }
     if (lightRef.current) {
-      lightRef.current.intensity = 9 + Math.sin(t * 11.3) * 2 + Math.sin(t * 5.7) * 1.2;
+      lightRef.current.intensity = 13 + Math.sin(t * 11.3) * 2.5 + Math.sin(t * 5.7) * 1.5;
     }
   });
 
@@ -76,8 +76,8 @@ export default function Torch({ position, phase = 0 }: TorchProps) {
         ref={lightRef}
         position={[0, 0.2, 0.35]}
         color="#ff9b3d"
-        intensity={9}
-        distance={9}
+        intensity={13}
+        distance={10}
         decay={2}
       />
     </group>

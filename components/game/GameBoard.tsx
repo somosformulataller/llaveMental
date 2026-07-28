@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import GameScene from './GameScene';
@@ -213,6 +213,17 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
 
   const isGameActive = gameStatus === 'ACTIVE';
 
+  // Tesoro que se revela al ganar: se deriva del id de sesión, así
+  // cada partida muestra una de las 5 variantes distintas.
+  const treasureVariant = useMemo(() => {
+    if (!sessionId) return 0;
+    let h = 0;
+    for (let i = 0; i < sessionId.length; i++) {
+      h = (h * 31 + sessionId.charCodeAt(i)) | 0;
+    }
+    return Math.abs(h) % 5;
+  }, [sessionId]);
+
   return (
     <div className="game-board">
       {/* Escena 3D a pantalla completa: mazmorra, puerta, cerradura y llaves */}
@@ -220,6 +231,7 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
         lockStatus={lockStatus}
         keyStatuses={keyStatuses}
         interactive={isGameActive && !isLoading}
+        treasureVariant={treasureVariant}
         onKeyClick={handleKeyClick}
       />
 
