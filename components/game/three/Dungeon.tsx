@@ -87,9 +87,18 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
         <meshStandardMaterial color="#221b13" roughness={1} />
       </mesh>
 
-      {/* Fondo del muro */}
-      <mesh position={[0, 2.5, -1.45]}>
-        <planeGeometry args={[24, 9]} />
+      {/* Fondo del muro en tres franjas: el vano de la puerta queda
+          ABIERTO para que al abrirse se vea la sala del tesoro */}
+      <mesh position={[-6.78, 2.5, -1.45]}>
+        <planeGeometry args={[10.45, 9]} />
+        <meshStandardMaterial color="#171310" roughness={1} />
+      </mesh>
+      <mesh position={[6.78, 2.5, -1.45]}>
+        <planeGeometry args={[10.45, 9]} />
+        <meshStandardMaterial color="#171310" roughness={1} />
+      </mesh>
+      <mesh position={[0, 5.33, -1.45]}>
+        <planeGeometry args={[3.1, 3.35]} />
         <meshStandardMaterial color="#171310" roughness={1} />
       </mesh>
 
