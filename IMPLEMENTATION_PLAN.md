@@ -486,33 +486,42 @@ npm run build
 
 ---
 
+## 📌 Estado de la configuración (27 jul 2026, tarde)
+
+### Supabase — proyecto `vsqizqujohptohrjjtqy`
+
+| Tarea | Estado | Detalle |
+|-------|:------:|---------|
+| Crear proyecto en Supabase | ✅ | `https://vsqizqujohptohrjjtqy.supabase.co` |
+| Credenciales en `.env.local` | ✅ | URL + anon key (publishable) configuradas y conexión verificada |
+| **Ejecutar migraciones SQL** | 🔴 **BLOQUEANTE** | Las tablas NO existen aún (verificado por API: `PGRST205`). En el **SQL Editor** del dashboard correr **en orden**: 1) `supabase/migrations/001_game_tables.sql` y 2) `supabase/migrations/002_admin_role.sql` (copiar y pegar el contenido de cada archivo → Run) |
+| Desactivar "Confirm email" | 🔴 Requerido para el usuario de prueba | Está ACTIVADA (verificado). Dashboard → **Auth → Sign In / Providers → Email → desactivar "Confirm email"**. Sin esto, cada registro exige confirmar un correo real |
+| Crear usuario de prueba (jugador) | ⬜ Bloqueado por los 2 puntos anteriores | En cuanto estén las migraciones + confirm email off, se crea vía API y se verifica el login (queda con $100 demo) |
+| Crear el usuario admin | ⬜ Bloqueado por migraciones | Registrar la cuenta y promover con `UPDATE ... SET role='admin'` (SQL en la migración 002 y el README) |
+| Google OAuth (opcional) | ⬜ | Está desactivado (verificado). Auth → Providers → Google + credenciales de Google Cloud Console |
+| URLs de producción en Auth | ⬜ | Auth → URL Configuration: Site URL + Redirect `https://<dominio-producción>/auth/callback` (poner la URL final de Vercel) |
+
+### Vercel — proyecto `formula-taller/llave-mental`
+
+| Tarea | Estado | Detalle |
+|-------|:------:|---------|
+| Proyecto creado y vinculado | ✅ | Creado vía CLI (`vercel link`). Nota: se llamó `llave-mental`; no hace falta crear otro proyecto "llaveMental" a mano — sería un duplicado |
+| Variables de entorno | ✅ | `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` en Production y Preview |
+| Deploy a producción | ✅ | ● Ready: `https://llave-mental-eupdgd35o-formula-taller.vercel.app` (se corrigieron `outputFileTracingRoot` y el flag `--webpack` del build) |
+| Repo en GitHub | ⬜ | El código ya está commiteado en git local (rama `main`). Falta: crear el repo en github.com (ej. `llaveMental`), hacer `git remote add origin <url>` + `git push -u origin main`, y conectarlo al proyecto Vercel (`npx vercel git connect` o dashboard → Settings → Git) para auto-deploys en cada push |
+
+### Local
+
+| Tarea | Estado | Detalle |
+|-------|:------:|---------|
+| Servidor de desarrollo | ✅ | Corriendo en `http://localhost:3001` (el puerto 3000 está ocupado por otro proceso) |
+| Build + lint + tsc | ✅ | Sin errores |
+
+---
+
 ## 🔴 Pendiente — Lo que falta por hacer
 
-### 1. Infraestructura (obligatorio para que funcione) ← **ÚNICO BLOQUEANTE**
-
-| Tarea | Detalle |
-|-------|---------|
-| ⬜ Crear proyecto en Supabase | Ir a [supabase.com](https://supabase.com) → New Project (requiere la cuenta del dueño) |
-| ⬜ Ejecutar migraciones SQL | Correr **en orden** `001_game_tables.sql` y `002_admin_role.sql` en el SQL Editor del dashboard |
-| ⬜ Configurar `.env.local` | Pegar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` reales (hoy tiene placeholders) |
-| ⬜ Crear el usuario admin | Registrarse en la app y promoverse con el `UPDATE ... SET role = 'admin'` (SQL en la migración 002 y el README) |
-| ⬜ Verificar el trigger `on_auth_user_created` | Registrar un usuario y confirmar que se crea fila en `players` automáticamente |
-
-### 2. Autenticación (configuración en Supabase)
-
-| Tarea | Detalle |
-|-------|---------|
-| ⬜ Habilitar confirmación de email | Dashboard → Auth → Email → activar o desactivar "Confirm email" según preferencia |
-| ⬜ Configurar Google OAuth (opcional) | Dashboard → Auth → Providers → Google → agregar Client ID y Secret de Google Cloud Console |
-| ⬜ Agregar URL de callback en Supabase | Dashboard → Auth → URL Configuration → agregar `https://tu-dominio.com/auth/callback` |
-
-### Deploy en Vercel
-
-| Tarea | Detalle |
-|-------|---------|
-| ⬜ Deploy | `npx vercel --prod` — la CLI ya está logueada (`somosformulataller-7875`); solo falta tener las credenciales de Supabase |
-| ⬜ Env vars en Vercel | Project → Settings → Environment Variables: `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
-| ⬜ URL de producción en Supabase | Auth → URL Configuration: Site URL + Redirect `https://tu-app.vercel.app/auth/callback` |
+> Lo bloqueante está arriba en "Estado de la configuración". Lo de abajo son features y mejoras.
 
 ---
 

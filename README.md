@@ -85,7 +85,9 @@ Y en Supabase (**Auth → URL Configuration**) agrega la URL de producción:
 
 **Hecho:** juego completo (RNG server-authoritative, animaciones, sonido), login/registro de jugador (email + Google), rol admin con panel `/admin` (métricas en vivo, RTP real, jugadores, partidas), redirección por rol, arquitectura SPA (pantallas estáticas instantáneas, shell persistente, transiciones animadas), PWA (manifest + service worker + banner de instalación). `lint`, `tsc` y `build` pasan sin errores.
 
-**Falta (bloqueante):** crear el proyecto en Supabase, pegar las credenciales reales en `.env.local` (hoy tiene placeholders), ejecutar las migraciones `001` + `002`, promover el admin por SQL y hacer el deploy en Vercel (la CLI ya está logueada). El detalle completo está en la sección "Pendiente" del plan.
+**Configurado:** proyecto Supabase creado y credenciales en `.env.local` (conexión verificada) · proyecto Vercel `formula-taller/llave-mental` con env vars y **deploy en producción ● Ready** · servidor local en `http://localhost:3001` · código commiteado en git (rama `main`).
+
+**Falta (bloqueante):** ejecutar las migraciones `001` + `002` en el SQL Editor de Supabase (las tablas aún no existen) y desactivar "Confirm email" en Auth para poder crear el usuario de prueba. Después: crear usuario de prueba y admin, subir el repo a GitHub y conectarlo a Vercel. El detalle completo está en "Estado de la configuración" del [plan](./IMPLEMENTATION_PLAN.md).
 
 ---
 
