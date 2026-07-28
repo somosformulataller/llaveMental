@@ -9,6 +9,8 @@ import Key3D from './Key3D';
 interface KeyRingProps {
   keyStatuses: KeyStatus[];
   interactive: boolean;
+  /** true cuando la puerta está abierta: las llaves se desvanecen */
+  dimmed: boolean;
   onKeyClick: (id: number) => void;
 }
 
@@ -22,7 +24,7 @@ const EDGE_MARGIN = 0.6;
 // el tamaño se calculan con el ancho VISIBLE a la profundidad de las
 // llaves (no en el origen): así todas entran siempre en pantalla,
 // incluso en móviles angostos.
-export default function KeyRing({ keyStatuses, interactive, onKeyClick }: KeyRingProps) {
+export default function KeyRing({ keyStatuses, interactive, dimmed, onKeyClick }: KeyRingProps) {
   const { viewport } = useThree();
 
   const { bases, size } = useMemo(() => {
@@ -55,6 +57,7 @@ export default function KeyRing({ keyStatuses, interactive, onKeyClick }: KeyRin
           status={status}
           base={bases[i]}
           size={size}
+          hidden={dimmed && status !== 'CORRECT'}
           interactive={interactive}
           onKeyClick={onKeyClick}
         />

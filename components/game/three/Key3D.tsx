@@ -12,6 +12,8 @@ interface Key3DProps {
   base: [number, number, number];
   /** Escala adaptativa según el ancho de pantalla (1 = tamaño completo) */
   size: number;
+  /** true cuando la puerta está abierta: la llave se desvanece para no tapar el tesoro */
+  hidden: boolean;
   interactive: boolean;
   onKeyClick: (id: number) => void;
 }
@@ -34,7 +36,7 @@ const goldProps = {
 // (cajas). El estado del juego dirige la animación en useFrame:
 // IDLE flota y se balancea · FLYING vuela al ojo de la cerradura ·
 // CORRECT gira dentro del ojo · BROKEN cae, se oscurece y se desvanece.
-export default function Key3D({ id, status, base, size, interactive, onKeyClick }: Key3DProps) {
+export default function Key3D({ id, status, base, size, hidden, interactive, onKeyClick }: Key3DProps) {
   const outerRef = useRef<THREE.Group>(null);
   const innerRef = useRef<THREE.Group>(null);
   const pos = useRef<THREE.Vector3 | null>(null);
@@ -90,6 +92,18 @@ export default function Key3D({ id, status, base, size, interactive, onKeyClick 
         if (m.isMeshStandardMaterial) mats.push(m);
       }
     });
+
+    // Puerta abierta: desvanecer la llave para despejar la vista del tesoro
+    if (hidden) {
+      let allFaded = true;
+      for (const m of mats) {
+        m.opacity = THREE.MathUtils.damp(m.opacity, 0, 4, delta);
+        if (m.opacity > 0.02) allFaded = false;
+      }
+      if (allFaded) outer.visible = false;
+      outer.position.copy(p);
+      return;
+    }
 
     if (status === 'IDLE') {
       // Restaurar tras "jugar de nuevo"

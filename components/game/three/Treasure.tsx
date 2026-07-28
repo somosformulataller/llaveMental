@@ -242,7 +242,7 @@ export default function Treasure({ variant }: TreasureProps) {
   });
 
   return (
-    <group position={[0, 0, -2.4]}>
+    <group position={[0, 0, -2.4]} scale={1.3}>
       <group ref={groupRef}>
         <Variant />
       </group>

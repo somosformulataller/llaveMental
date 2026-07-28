@@ -64,16 +64,16 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
     if (doorRef.current) {
       doorRef.current.rotation.y = THREE.MathUtils.damp(
         doorRef.current.rotation.y,
-        open ? -1.25 : 0,
-        open ? 1.6 : 8,
+        open ? -1.45 : 0,
+        open ? 2.6 : 8,
         delta
       );
     }
     if (treasureLight.current) {
       treasureLight.current.intensity = THREE.MathUtils.damp(
         treasureLight.current.intensity,
-        open ? 30 : 0,
-        2.5,
+        open ? 45 : 0,
+        3.5,
         delta
       );
     }

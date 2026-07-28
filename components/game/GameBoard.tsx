@@ -184,10 +184,15 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
         setVault(data.payout);
 
         setTimeout(() => {
-          setGameStatus('COMPLETED_WIN');
-          setFinalPayout(data.payout);
           onBalanceChange(player!.balance + data.payout);
         }, 1200);
+
+        // Secuencia cinemática: la llave gira (~1s), la puerta se abre
+        // y la cámara avanza al tesoro; el modal espera a que se vea.
+        setTimeout(() => {
+          setGameStatus('COMPLETED_WIN');
+          setFinalPayout(data.payout);
+        }, 5200);
       }
     } catch {
       setError('Error de conexión');
