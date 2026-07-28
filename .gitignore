@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.local.example
 
+# credenciales locales (no subir a git)
+credenciales.md
+
 # PWA service worker (generado por next-pwa en cada build)
 /public/sw.js
 /public/workbox-*.js
