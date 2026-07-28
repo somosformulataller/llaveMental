@@ -12,13 +12,14 @@ export interface MedievalSceneProps {
   onKeyClick: (id: number) => void;
 }
 
-// Parallax sutil de cámara siguiendo el puntero.
+// Parallax sutil de cámara siguiendo el puntero (amplitud pequeña
+// para que las llaves de los bordes nunca salgan del encuadre).
 function CameraRig() {
   useFrame((state, delta) => {
     const k = 1 - Math.exp(-3 * delta);
     const { camera, pointer } = state;
-    camera.position.x += (pointer.x * 0.35 - camera.position.x) * k;
-    camera.position.y += (1.6 + pointer.y * 0.18 - camera.position.y) * k;
+    camera.position.x += (pointer.x * 0.12 - camera.position.x) * k;
+    camera.position.y += (1.6 + pointer.y * 0.1 - camera.position.y) * k;
     camera.lookAt(0, 1.35, 0);
   });
   return null;

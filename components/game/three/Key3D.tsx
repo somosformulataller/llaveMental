@@ -10,6 +10,8 @@ interface Key3DProps {
   id: number;
   status: KeyStatus;
   base: [number, number, number];
+  /** Escala adaptativa según el ancho de pantalla (1 = tamaño completo) */
+  size: number;
   interactive: boolean;
   onKeyClick: (id: number) => void;
 }
@@ -32,7 +34,7 @@ const goldProps = {
 // (cajas). El estado del juego dirige la animación en useFrame:
 // IDLE flota y se balancea · FLYING vuela al ojo de la cerradura ·
 // CORRECT gira dentro del ojo · BROKEN cae, se oscurece y se desvanece.
-export default function Key3D({ id, status, base, interactive, onKeyClick }: Key3DProps) {
+export default function Key3D({ id, status, base, size, interactive, onKeyClick }: Key3DProps) {
   const outerRef = useRef<THREE.Group>(null);
   const innerRef = useRef<THREE.Group>(null);
   const pos = useRef<THREE.Vector3 | null>(null);
@@ -102,7 +104,7 @@ export default function Key3D({ id, status, base, interactive, onKeyClick }: Key
       outer.rotation.y = THREE.MathUtils.damp(outer.rotation.y, hovered && clickable ? 0.5 : 0, 7, delta);
       inner.rotation.y = THREE.MathUtils.damp(inner.rotation.y, 0, 7, delta);
       outer.scale.setScalar(
-        THREE.MathUtils.damp(outer.scale.x, hovered && clickable ? 1.22 : 1, 9, delta)
+        THREE.MathUtils.damp(outer.scale.x, (hovered && clickable ? 1.22 : 1) * size, 9, delta)
       );
       for (const m of mats) {
         m.color.lerp(GOLD, k);
@@ -117,7 +119,7 @@ export default function Key3D({ id, status, base, interactive, onKeyClick }: Key
       outer.rotation.x = THREE.MathUtils.damp(outer.rotation.x, -Math.PI / 2, 6, delta);
       outer.rotation.z = THREE.MathUtils.damp(outer.rotation.z, 0, 6, delta);
       outer.rotation.y = THREE.MathUtils.damp(outer.rotation.y, 0, 6, delta);
-      outer.scale.setScalar(THREE.MathUtils.damp(outer.scale.x, 1, 9, delta));
+      outer.scale.setScalar(THREE.MathUtils.damp(outer.scale.x, size, 9, delta));
     } else if (status === 'CORRECT') {
       turnTimer.current += delta;
       p.x = THREE.MathUtils.damp(p.x, KEYHOLE_TARGET.x, 6, delta);
