@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isBankApiConfigured, validatePayment } from './bankApi';
+import { DUPLICATE_MARKER } from './constants';
 
 export interface AutoValidateResult {
   status: 'aprobado' | 'pendiente';
@@ -26,13 +27,19 @@ export async function tryAutoValidatePurchase(purchaseId: string): Promise<AutoV
 
   const { data: purchase, error } = await admin
     .from('ticket_purchases')
-    .select('id, player_id, status, reference, amount_ves')
+    .select('id, player_id, status, reference, amount_ves, status_note')
     .eq('id', purchaseId)
     .single();
 
   if (error || !purchase) return { status: 'pendiente', reason: 'Compra no encontrada' };
   if (purchase.status === 'aprobado') return { status: 'aprobado' };
   if (purchase.status === 'rechazado') return { status: 'pendiente', reason: 'Compra rechazada' };
+
+  // Referencia repetida: revisión SOLO manual. Si la validáramos,
+  // podría reclamar en el banco el pago que pertenece a otra compra.
+  if (purchase.status_note?.startsWith(DUPLICATE_MARKER)) {
+    return { status: 'pendiente', reason: purchase.status_note };
+  }
 
   if (!isBankApiConfigured()) {
     await admin

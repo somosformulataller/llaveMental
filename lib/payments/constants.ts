@@ -7,6 +7,11 @@ export const TICKET_PRICE_USD = TICKET_COST;
 export const MAX_TICKETS_PER_PURCHASE = 50;
 export const MIN_WITHDRAWAL_USD = 1;
 
+// Marca en status_note de las compras con referencia repetida:
+// esas compras son SIEMPRE de revisión manual (la validación
+// automática las salta para no reclamar el pago de otra compra).
+export const DUPLICATE_MARKER = '⚠ Referencia repetida';
+
 // Datos de Pago Móvil a donde paga el jugador (se muestran en el
 // modal de compra). Si cambian, se editan aquí.
 export const PAYMENT_DESTINATION = {

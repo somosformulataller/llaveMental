@@ -3,7 +3,11 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
 import { fetchExchangeRateSafe } from '@/lib/payments/exchangeRate';
 import { tryAutoValidatePurchase } from '@/lib/payments/validatePurchase';
-import { MAX_TICKETS_PER_PURCHASE, TICKET_PRICE_USD } from '@/lib/payments/constants';
+import {
+  DUPLICATE_MARKER,
+  MAX_TICKETS_PER_PURCHASE,
+  TICKET_PRICE_USD,
+} from '@/lib/payments/constants';
 
 // Historial de compras del jugador (RLS: solo las suyas)
 export async function GET() {
@@ -70,6 +74,32 @@ export async function POST(req: NextRequest) {
     const amountVes = rate ? Math.round(amountUsd * rate.rate * 100) / 100 : null;
 
     const admin = createAdminClient();
+
+    // ¿Referencia repetida? Cada número es único por banco, pero
+    // entre bancos distintos puede coincidir: la compra se registra
+    // igual, queda pendiente con nota de anomalía para el admin, y
+    // la validación automática no la toca (revisión 100% manual).
+    const norm = reference.toLowerCase().replace(/\s/g, '');
+    const { data: dups } = await admin
+      .from('ticket_purchases')
+      .select('id, status, created_at')
+      .eq('reference_norm', norm)
+      .neq('status', 'rechazado')
+      .limit(5);
+
+    const isDuplicate = (dups?.length ?? 0) > 0;
+    const dupNote = isDuplicate
+      ? `${DUPLICATE_MARKER}: ya aparece en ${dups!.length} compra(s) más (${dups!
+          .map(
+            (d) =>
+              `${d.status} · ${new Date(d.created_at).toLocaleDateString('es-VE', {
+                day: '2-digit',
+                month: 'short',
+              })}`
+          )
+          .join(', ')}). Si el pago vino de OTRO banco puede ser válida: verifícala contra el banco antes de aprobar.`
+      : null;
+
     const { data: purchase, error: insertError } = await admin
       .from('ticket_purchases')
       .insert({
@@ -79,19 +109,34 @@ export async function POST(req: NextRequest) {
         amount_ves: amountVes,
         exchange_rate_used: rate?.rate ?? null,
         reference,
+        ...(dupNote ? { status: 'pendiente', status_note: dupNote } : {}),
       })
       .select('id')
       .single();
 
     if (insertError || !purchase) {
       if (insertError?.code === '23505') {
+        // Índice único todavía activo (migración 004 sin correr)
         return NextResponse.json(
-          { error: 'Esa referencia de pago ya fue registrada.' },
+          { error: 'Ese número de referencia ya fue usado en otra compra.' },
           { status: 409 }
         );
       }
       console.error('purchase insert error:', insertError);
       return NextResponse.json({ error: 'No se pudo registrar la compra' }, { status: 500 });
+    }
+
+    if (isDuplicate) {
+      return NextResponse.json({
+        purchase_id: purchase.id,
+        status: 'pendiente',
+        tickets: null,
+        duplicate: true,
+        reason:
+          'Ese número de referencia ya se usó en otra compra. Tu solicitud quedó en revisión: si pagaste desde un banco distinto, un administrador la verificará y aprobará.',
+        amount_usd: amountUsd,
+        amount_ves: amountVes,
+      });
     }
 
     const result = await tryAutoValidatePurchase(purchase.id);

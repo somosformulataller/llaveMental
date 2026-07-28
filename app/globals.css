@@ -1960,6 +1960,12 @@ select.ref-input { appearance: auto; }
   line-height: 1.4;
 }
 
+/* Nota de anomalía (referencia repetida, etc.): resaltada */
+.admin-note-warn {
+  color: var(--gold-1);
+  font-weight: 600;
+}
+
 .admin-row-click { cursor: pointer; }
 .admin-row-click:hover td { background: rgba(255,255,255,0.03); }
 

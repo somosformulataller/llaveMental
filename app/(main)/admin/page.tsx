@@ -289,7 +289,15 @@ export default function AdminPage() {
                     <span className={`status-badge status-${p.status}`}>
                       {PURCHASE_STATUS_LABEL[p.status]}
                     </span>
-                    {p.status_note && <div className="admin-note">{p.status_note}</div>}
+                    {p.status_note && (
+                      <div
+                        className={`admin-note ${
+                          p.status_note.startsWith('⚠') ? 'admin-note-warn' : ''
+                        }`}
+                      >
+                        {p.status_note}
+                      </div>
+                    )}
                   </td>
                   <td>{p.origin === 'auto' ? 'Automático' : p.origin === 'manual' ? 'Manual' : '—'}</td>
                   <td className="admin-actions">
