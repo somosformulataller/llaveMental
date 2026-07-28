@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import { usePlayer } from '@/components/providers/PlayerProvider';
 import { TICKET_PRICE_USD } from '@/lib/payments/constants';
 
@@ -19,6 +20,29 @@ export default function Header() {
   const [qty, setQty] = useState(1);
   const [redeeming, setRedeeming] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar el desplegable al tocar fuera o con Escape
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
   const balance = Number(player?.balance ?? 0);
   const tickets = Number(player?.tickets ?? 0);
@@ -55,13 +79,18 @@ export default function Header() {
     }
   };
 
-  // Cada opción del select lleva a su pantalla
-  const handleSelect = (value: string) => {
-    if (value === 'wallet') router.push('/billetera');
-    if (value === 'ranking') router.push('/ranking');
-    if (value === 'game') router.push('/game');
-    if (value === 'admin') router.push('/admin');
+  // Cada opción del desplegable lleva a su pantalla
+  const go = (path: string) => {
+    setMenuOpen(false);
+    router.push(path);
   };
+
+  const menuItems = [
+    { label: '👛 Canjear o retirar', path: '/billetera' },
+    { label: '🏆 Ranking', path: '/ranking' },
+    { label: '🔑 Jugar', path: '/game' },
+    ...(isAdmin ? [{ label: '👑 Admin', path: '/admin' }] : []),
+  ];
 
   return (
     <header className="game-header">
@@ -69,20 +98,41 @@ export default function Header() {
         <>
           {/* Fila 1: select + canje automático y manual */}
           <div className="header-row">
-            <select
-              className="header-select"
-              value=""
-              onChange={(e) => handleSelect(e.target.value)}
-              aria-label="Menú"
-            >
-              <option value="" hidden>
-                Canjear o retirar
-              </option>
-              <option value="wallet">Canjear o retirar</option>
-              <option value="ranking">Ranking</option>
-              <option value="game">Jugar</option>
-              {isAdmin && <option value="admin">Admin</option>}
-            </select>
+            {/* Desplegable con la UI de la app (no el select nativo) */}
+            <div className="menu-wrap" ref={menuRef}>
+              <button
+                className="header-select"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+              >
+                <span className="header-select-label">Canjear o retirar</span>
+                <span className={`menu-caret ${menuOpen ? 'menu-caret-open' : ''}`}>▾</span>
+              </button>
+              <AnimatePresence>
+                {menuOpen && (
+                  <motion.div
+                    className="menu-list"
+                    role="menu"
+                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                  >
+                    {menuItems.map((item) => (
+                      <button
+                        key={item.path}
+                        className="menu-item"
+                        role="menuitem"
+                        onClick={() => go(item.path)}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             <div className="redeem-controls">
               <button

@@ -1248,8 +1248,16 @@ a.wallet-badge {
   cursor: pointer;
 }
 
-/* ── Header: select de navegación + canje rápido ── */
+/* ── Header: desplegable propio (no el select del sistema) ── */
+.menu-wrap {
+  position: relative;
+  min-width: 0;
+}
+
 .header-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   background: var(--bg-surface-2);
   border: 1px solid var(--border-gold);
   color: var(--gold-1);
@@ -1259,14 +1267,60 @@ a.wallet-badge {
   padding: 8px 12px;
   border-radius: var(--radius-md);
   cursor: pointer;
-  max-width: 190px;
+  max-width: 200px;
   min-width: 0;
+  transition: all 0.15s;
 }
+.header-select:hover { background: rgba(245,197,24,0.1); }
 .header-select:focus { outline: none; border-color: var(--gold-1); }
-.header-select option {
-  background: #16181f;
-  color: var(--text-primary);
-  font-family: var(--font-inter), sans-serif;
+
+.header-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-caret {
+  font-size: 0.8rem;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+.menu-caret-open { transform: rotate(180deg); }
+
+.menu-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 210px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 300;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.menu-item:hover {
+  background: rgba(245,197,24,0.1);
+  color: var(--gold-1);
 }
 
 .redeem-controls {
