@@ -486,7 +486,7 @@ npm run build
 
 ---
 
-## 📌 Estado de la configuración (27 jul 2026, tarde)
+## 📌 Estado de la configuración (27 jul 2026, noche)
 
 ### Supabase — proyecto `vsqizqujohptohrjjtqy`
 
@@ -494,10 +494,10 @@ npm run build
 |-------|:------:|---------|
 | Crear proyecto en Supabase | ✅ | `https://vsqizqujohptohrjjtqy.supabase.co` |
 | Credenciales en `.env.local` | ✅ | URL + anon key (publishable) configuradas y conexión verificada |
-| **Ejecutar migraciones SQL** | 🔴 **BLOQUEANTE** | Las tablas NO existen aún (verificado por API: `PGRST205`). En el **SQL Editor** del dashboard correr **en orden**: 1) `supabase/migrations/001_game_tables.sql` y 2) `supabase/migrations/002_admin_role.sql` (copiar y pegar el contenido de cada archivo → Run) |
-| Desactivar "Confirm email" | 🔴 Requerido para el usuario de prueba | Está ACTIVADA (verificado). Dashboard → **Auth → Sign In / Providers → Email → desactivar "Confirm email"**. Sin esto, cada registro exige confirmar un correo real |
-| Crear usuario de prueba (jugador) | ⬜ Bloqueado por los 2 puntos anteriores | En cuanto estén las migraciones + confirm email off, se crea vía API y se verifica el login (queda con $100 demo) |
-| Crear el usuario admin | ⬜ Bloqueado por migraciones | Registrar la cuenta y promover con `UPDATE ... SET role='admin'` (SQL en la migración 002 y el README) |
+| Ejecutar migraciones SQL | ✅ | `001_game_tables.sql` + `002_admin_role.sql` ejecutadas en el SQL Editor (tablas verificadas por API) |
+| Desactivar "Confirm email" | ✅ | Verificado por API (`mailer_autoconfirm: true`) — los registros entran sin confirmar correo |
+| Crear usuario de prueba (jugador) | ✅ | **`jugador.prueba.llave@gmail.com` / `Prueba123!`** — login verificado por API, perfil auto-creado con $100, rol `player`. Nota: Supabase rechaza dominios tipo `@example.com` |
+| Crear el usuario admin | ⬜ | Registrar la cuenta desde la app y promover con `UPDATE ... SET role='admin'` (SQL en la migración 002 y el README) |
 | Google OAuth (opcional) | ⬜ | Está desactivado (verificado). Auth → Providers → Google + credenciales de Google Cloud Console |
 | URLs de producción en Auth | ⬜ | Auth → URL Configuration: Site URL + Redirect `https://<dominio-producción>/auth/callback` (poner la URL final de Vercel) |
 
