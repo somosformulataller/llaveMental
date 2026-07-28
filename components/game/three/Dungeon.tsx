@@ -131,7 +131,7 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
       {/* ── Sala del tesoro (visible al abrir) ── */}
       <mesh position={[0, 2, -3.4]}>
         <planeGeometry args={[6, 8]} />
-        <meshStandardMaterial color="#0a0703" roughness={1} />
+        <meshStandardMaterial color="#241a10" roughness={1} />
       </mesh>
       <pointLight
         ref={treasureLight}
