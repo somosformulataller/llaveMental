@@ -25,12 +25,14 @@ export interface BankValidationResult {
   raw?: unknown;
 }
 
+import { cleanEnv } from '@/lib/supabase/admin';
+
 const TIMEOUT_MS = 12_000;
 
 function getConfig() {
-  const url = process.env.BANK_API_URL;
-  const token = process.env.BANK_API_TOKEN;
-  const accountName = process.env.BANK_API_ACCOUNT_NAME;
+  const url = cleanEnv(process.env.BANK_API_URL);
+  const token = cleanEnv(process.env.BANK_API_TOKEN);
+  const accountName = cleanEnv(process.env.BANK_API_ACCOUNT_NAME);
   if (!url || !token || !accountName) return null;
   return { url: url.replace(/\/$/, ''), token, accountName };
 }
