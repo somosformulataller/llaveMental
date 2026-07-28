@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePlayer } from '@/components/providers/PlayerProvider';
+import NotificationsBell from './NotificationsBell';
 
 // Header en una sola fila: desplegable de navegación (UI propia),
-// contadores de tickets y saldo actuales, y Salir. El canje de
-// tickets vive en la barra inferior (RedeemBar).
+// contadores de tickets y saldo actuales, y la campanita de
+// notificaciones. El canje de tickets vive en la barra inferior
+// (RedeemBar) y Salir es la última opción del desplegable.
 export default function Header() {
   const { player, isLoading, isAdmin, signOut } = usePlayer();
   const router = useRouter();
@@ -112,6 +114,8 @@ export default function Header() {
               <span className="wallet-amount">${player.balance.toFixed(2)}</span>
             </Link>
           </div>
+
+          <NotificationsBell />
         </div>
       ) : (
         <div className="header-row">
