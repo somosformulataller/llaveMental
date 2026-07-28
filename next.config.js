@@ -50,8 +50,8 @@ const withPWA = require('next-pwa')({
 
 const nextConfig = {
   reactStrictMode: true,
-  // Silence workspace root warning when multiple lockfiles detected
-  outputFileTracingRoot: require('path').join(__dirname, '../../'),
+  // Raíz de trazado = el propio proyecto (rutas relativas rotas en Vercel si apunta fuera)
+  outputFileTracingRoot: __dirname,
   // Force webpack mode (required for next-pwa compatibility)
   turbopack: {},
 };
