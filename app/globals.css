@@ -1017,8 +1017,12 @@ h1, h2, h3 {
 .pwa-banner {
   position: fixed;
   bottom: var(--space-md);
-  left: 50%;
-  transform: translateX(-50%);
+  /* Centrado con left/right + margin auto (no con transform:
+     Framer Motion anima `y` y sobreescribiría translateX(-50%)) */
+  left: var(--space-md);
+  right: var(--space-md);
+  margin-inline: auto;
+  width: fit-content;
   background: var(--bg-surface);
   border: 1px solid var(--border-gold);
   border-radius: var(--radius-md);
@@ -1028,8 +1032,8 @@ h1, h2, h3 {
   gap: var(--space-md);
   box-shadow: var(--shadow-gold);
   z-index: 500;
-  min-width: 300px;
-  max-width: 90vw;
+  min-width: min(300px, 100%);
+  max-width: 100%;
 }
 
 .pwa-banner-text {
