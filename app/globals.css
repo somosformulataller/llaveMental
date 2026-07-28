@@ -199,29 +199,64 @@ h1, h2, h3 {
   min-height: 100vh;
 }
 
+/* Experiencia inmersiva: la escena 3D llena toda la pantalla de juego
+   y la UI (pozo, botones, textos) flota superpuesta sobre el canvas */
 .game-main {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: var(--space-xl) var(--space-md);
-  gap: var(--space-lg);
+  padding: 0;
 }
 
 .game-board {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.game-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-lg);
-  width: 100%;
-  max-width: 680px;
-  padding: var(--space-xl) var(--space-lg);
-  background: var(--bg-surface-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  gap: var(--space-sm);
+  z-index: 5;
+  pointer-events: none;
+  padding: 0 var(--space-md);
+}
+
+.game-overlay > * {
+  pointer-events: auto;
+}
+
+.game-overlay-top {
+  top: var(--space-sm);
+}
+
+.game-overlay-bottom {
+  bottom: var(--space-md);
+}
+
+/* Chips translúcidos para que la UI se lea sobre la escena */
+.game-overlay .vault-counter-container,
+.game-overlay .idle-section,
+.game-overlay .keys-instruction,
+.game-overlay .lock-status-text {
+  background: rgba(10, 8, 5, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(245, 197, 24, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-xs) var(--space-md);
+}
+
+.game-overlay .idle-section {
+  padding: var(--space-md) var(--space-lg);
 }
 
 /* ============================================
@@ -246,7 +281,7 @@ h1, h2, h3 {
 
 .vault-amount {
   font-family: var(--font-display);
-  font-size: 3.5rem;
+  font-size: clamp(2.1rem, 5vh, 3.2rem);
   font-weight: 700;
   background: linear-gradient(135deg, var(--gold-1), var(--gold-2));
   -webkit-background-clip: text;
@@ -269,35 +304,8 @@ h1, h2, h3 {
 }
 
 /* ============================================
-   LOCK
+   ESTADO DE LA CERRADURA
    ============================================ */
-.lock-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-sm);
-  position: relative;
-}
-
-.lock-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.lock-svg {
-  filter: drop-shadow(0 0 20px rgba(245,197,24,0.3));
-  transition: filter 0.3s;
-}
-
-.lock-glow {
-  position: absolute;
-  inset: -40px;
-  border-radius: 50%;
-  pointer-events: none;
-}
-
 .lock-status-text {
   font-family: var(--font-display);
   font-size: 0.9rem;
@@ -308,61 +316,6 @@ h1, h2, h3 {
 
 .lock-open { color: var(--green-win); }
 .lock-shake { color: var(--red-lose); }
-
-/* ============================================
-   KEY GRID
-   ============================================ */
-.key-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: var(--space-sm);
-  width: 100%;
-  max-width: 480px;
-}
-
-.key-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  background: var(--bg-surface-2);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: var(--space-sm);
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
-  position: relative;
-  overflow: visible;
-}
-
-.key-btn:not(:disabled):hover {
-  border-color: var(--gold-1);
-  background: rgba(245,197,24,0.07);
-  box-shadow: 0 0 15px rgba(245,197,24,0.15);
-}
-
-.key-btn:disabled {
-  cursor: not-allowed;
-}
-
-.key-btn.key-broken {
-  border-color: rgba(255,71,87,0.3);
-  background: rgba(255,71,87,0.05);
-}
-
-.key-btn.key-correct {
-  border-color: var(--green-win);
-  background: rgba(0,255,135,0.08);
-  box-shadow: 0 0 20px rgba(0,255,135,0.2);
-}
-
-.key-label {
-  font-family: var(--font-display);
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  letter-spacing: 0.05em;
-}
 
 /* ============================================
    IDLE / ACTIVE SECTIONS
@@ -988,10 +941,6 @@ h1, h2, h3 {
 
   .brand-name { font-size: 1.1rem; }
 
-  .key-grid {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
-  }
 
   .key-btn { padding: 6px 4px; }
 
@@ -1001,15 +950,9 @@ h1, h2, h3 {
 
   .modal-card { padding: var(--space-lg); }
 
-  .game-board { padding: var(--space-lg) var(--space-md); }
-
   .game-header .user-badge span { display: none; }
 }
 
-@media (max-width: 400px) {
-  .key-grid { grid-template-columns: repeat(5, 1fr); gap: 4px; }
-  .key-btn svg { width: 34px; height: 62px; }
-}
 
 /* ============================================
    PWA INSTALL BANNER
@@ -1073,21 +1016,15 @@ h1, h2, h3 {
   line-height: 1;
 }
 
-/* ============================================
-   LOCK SECTION
-   ============================================ */
-.lock-section {
-  padding: var(--space-md) 0;
-}
 
 /* ============================================
    FOOTER
    ============================================ */
 .game-footer {
   text-align: center;
-  padding: var(--space-lg);
+  padding: var(--space-xs) var(--space-md);
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   border-top: 1px solid var(--border-subtle);
 }
 
@@ -1095,19 +1032,29 @@ h1, h2, h3 {
    APP SHELL (SPA) — layout persistente
    ============================================ */
 .app-shell {
-  min-height: 100vh;
+  /* Altura fija del viewport: la app se comporta como juego, sin
+     scroll de página (100dvh evita el salto de la barra móvil) */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
 .app-content {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  /* Red de seguridad: solo aparece scroll interno si el contenido
+     realmente no cabe (ventanas muy bajas); nunca scroll horizontal */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .page-transition {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -1246,14 +1193,12 @@ h1, h2, h3 {
    ESCENA 3D MEDIEVAL (React Three Fiber)
    ============================================ */
 .scene3d-wrap {
-  position: relative;
-  width: 100%;
-  height: clamp(340px, 48vh, 540px);
-  border-radius: var(--radius-md);
+  /* Canvas a pantalla completa dentro del tablero: la UI flota encima */
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  border: 1px solid rgba(245, 197, 24, 0.18);
   background: #0e0a07;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55), inset 0 0 60px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.5);
 }
 
 .scene3d-wrap canvas {
@@ -1297,6 +1242,3 @@ h1, h2, h3 {
   letter-spacing: 0.04em;
 }
 
-@media (max-width: 640px) {
-  .scene3d-wrap { height: clamp(300px, 44vh, 420px); }
-}

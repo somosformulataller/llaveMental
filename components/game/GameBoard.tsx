@@ -215,10 +215,7 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
 
   return (
     <div className="game-board">
-      {/* Vault Counter */}
-      <VaultCounter amount={vault} isDecreasing={isDecreasing} />
-
-      {/* Escena 3D: mazmorra, puerta, cerradura y llaves */}
+      {/* Escena 3D a pantalla completa: mazmorra, puerta, cerradura y llaves */}
       <GameScene
         lockStatus={lockStatus}
         keyStatuses={keyStatuses}
@@ -226,7 +223,25 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
         onKeyClick={handleKeyClick}
       />
 
-      {/* Texto de estado de la cerradura */}
+      {/* UI superpuesta — arriba: el pozo */}
+      <div className="game-overlay game-overlay-top">
+        <VaultCounter amount={vault} isDecreasing={isDecreasing} />
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              className="error-banner"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
+              ⚠️ {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* UI superpuesta — abajo: estado, instrucción y compra */}
+      <div className="game-overlay game-overlay-bottom">
       <AnimatePresence mode="wait">
         {lockStatus === 'OPEN' && (
           <motion.p
@@ -249,20 +264,6 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
           >
             ✗ Llave incorrecta
           </motion.p>
-        )}
-      </AnimatePresence>
-
-      {/* Error message */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            className="error-banner"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-          >
-            ⚠️ {error}
-          </motion.div>
         )}
       </AnimatePresence>
 
@@ -299,18 +300,17 @@ export default function GameBoard({ player, playerLoading = false, onBalanceChan
         </motion.div>
       )}
 
-      {/* Active game: Key Grid */}
+      {/* Active game: instrucción */}
       {isGameActive && (
-        <motion.div
-          className="active-game-section"
+        <motion.p
+          className="keys-instruction"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          <p className="keys-instruction">
-            🗝️ Toca una llave para intentar abrir la cerradura
-          </p>
-        </motion.div>
+          🗝️ Toca una llave para intentar abrir la cerradura
+        </motion.p>
       )}
+      </div>
 
       {/* Win / Lose modals */}
       <AnimatePresence>
