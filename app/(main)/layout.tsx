@@ -1,15 +1,17 @@
 'use client';
 
 import Header from '@/components/layout/Header';
+import RedeemBar from '@/components/wallet/RedeemBar';
 import PwaInstallBanner from '@/components/ui/PwaInstallBanner';
 
-// Layout persistente del shell SPA: el Header y el footer NO se
-// re-montan al navegar entre pantallas — solo cambia el contenido.
+// Layout persistente del shell SPA: el Header, la barra de canje y el
+// footer NO se re-montan al navegar — solo cambia el contenido.
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <Header />
       <div className="app-content">{children}</div>
+      <RedeemBar />
       <footer className="game-footer">
         <p>🗝️ La Llave Correcta · Juego de entretenimiento · Premios por Pago Móvil</p>
       </footer>

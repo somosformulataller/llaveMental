@@ -1323,13 +1323,19 @@ a.wallet-badge {
   color: var(--gold-1);
 }
 
-.redeem-controls {
+/* Barra inferior de canje (Todo a tickets · stepper · Canjear) */
+.redeem-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
+  justify-content: center;
+  gap: var(--space-sm);
   flex-wrap: wrap;
-  justify-content: flex-end;
+  padding: 8px var(--space-md);
+  background: var(--bg-surface-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-gold);
+  flex-shrink: 0;
 }
 
 .btn-mini.btn-gold {
