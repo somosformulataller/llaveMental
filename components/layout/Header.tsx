@@ -1,24 +1,13 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Player } from '@/types/game';
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { usePlayer } from '@/components/providers/PlayerProvider';
 
-interface HeaderProps {
-  player: Player | null;
-  onBalanceUpdate?: () => void;
-}
-
-export default function Header({ player, onBalanceUpdate }: HeaderProps) {
-  const router = useRouter();
-  const supabase = createClient();
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-    router.refresh();
-  };
+export default function Header() {
+  const { player, isLoading, isAdmin, signOut } = usePlayer();
+  const pathname = usePathname();
 
   return (
     <header className="game-header">
@@ -27,8 +16,28 @@ export default function Header({ player, onBalanceUpdate }: HeaderProps) {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
       >
-        <span className="brand-icon">🗝️</span>
-        <span className="brand-name">La Llave Correcta</span>
+        <Link href="/" className="brand-link" prefetch>
+          <span className="brand-icon">🗝️</span>
+          <span className="brand-name">La Llave Correcta</span>
+        </Link>
+        <nav className="header-nav">
+          <Link
+            href="/game"
+            className={`nav-link ${pathname === '/game' ? 'nav-link-active' : ''}`}
+            prefetch
+          >
+            Jugar
+          </Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={`nav-link ${pathname === '/admin' ? 'nav-link-active' : ''}`}
+              prefetch
+            >
+              Admin
+            </Link>
+          )}
+        </nav>
       </motion.div>
 
       <motion.div
@@ -43,16 +52,21 @@ export default function Header({ player, onBalanceUpdate }: HeaderProps) {
               <span className="wallet-amount">${player.balance.toFixed(2)}</span>
             </div>
             <div className="user-badge">
-              <span>{player.username || 'Jugador'}</span>
-              <button className="signout-btn" onClick={handleSignOut}>
+              <span>
+                {isAdmin ? '👑 ' : ''}
+                {player.username || 'Jugador'}
+              </span>
+              <button className="signout-btn" onClick={signOut}>
                 Salir
               </button>
             </div>
           </>
         ) : (
-          <a href="/auth/login" className="btn-login">
-            Iniciar sesión
-          </a>
+          !isLoading && (
+            <Link href="/auth/login" className="btn-login" prefetch>
+              Iniciar sesión
+            </Link>
+          )
         )}
       </motion.div>
     </header>

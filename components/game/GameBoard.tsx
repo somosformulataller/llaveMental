@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import Lock from './Lock';
 import KeyGrid from './KeyGrid';
@@ -12,10 +13,11 @@ import { TOTAL_KEYS, INITIAL_VAULT } from '@/lib/game/constants';
 
 interface GameBoardProps {
   player: Player | null;
+  playerLoading?: boolean;
   onBalanceChange: (newBalance: number) => void;
 }
 
-export default function GameBoard({ player, onBalanceChange }: GameBoardProps) {
+export default function GameBoard({ player, playerLoading = false, onBalanceChange }: GameBoardProps) {
   // Game state
   const [gameStatus, setGameStatus] = useState<GameStatus>('IDLE');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -34,7 +36,10 @@ export default function GameBoard({ player, onBalanceChange }: GameBoardProps) {
 
   const getAudioContext = () => {
     if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      audioCtxRef.current = new AudioCtx();
     }
     return audioCtxRef.current;
   };
@@ -245,24 +250,24 @@ export default function GameBoard({ player, onBalanceChange }: GameBoardProps) {
             Elige la llave correcta y gana hasta <strong>$10.00</strong>
           </p>
           <p className="idle-cost">Costo del ticket: <strong>$2.00</strong></p>
-          {player ? (
+          {player || playerLoading ? (
             <motion.button
               className="btn-buy"
               onClick={handleBuyTicket}
-              disabled={isLoading || (player?.balance ?? 0) < 2}
+              disabled={isLoading || playerLoading || (player?.balance ?? 0) < 2}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              {isLoading ? (
+              {isLoading || playerLoading ? (
                 <span className="loading-dots">Cargando...</span>
               ) : (
                 <>🎟️ Comprar Ticket — $2.00</>
               )}
             </motion.button>
           ) : (
-            <a href="/auth/login" className="btn-buy">
+            <Link href="/auth/login" className="btn-buy" prefetch>
               🔐 Iniciar sesión para jugar
-            </a>
+            </Link>
           )}
         </motion.div>
       )}

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { drawPayoutTier } from '@/lib/game/rng';
 import { TICKET_COST, INITIAL_VAULT } from '@/lib/game/constants';
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     const supabase = await createClient();
 
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     // 2. Get player's current balance
     const { data: player, error: playerError } = await supabase
       .from('players')
-      .select('id, balance')
+      .select('id, balance, total_wagered')
       .eq('id', user.id)
       .single();
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Check sufficient balance
-    if (player.balance < TICKET_COST) {
+    if (Number(player.balance) < TICKET_COST) {
       return NextResponse.json(
         { error: 'Saldo insuficiente. Necesitas $2.00 para jugar.' },
         { status: 400 }
@@ -54,8 +54,7 @@ export async function POST(req: NextRequest) {
     // 5. RNG: Select payout tier (SERVER-SIDE — not manipulable by client)
     const payoutTier = drawPayoutTier();
 
-    // 6. Create game session in DB (atomic transaction via RPC would be ideal,
-    //    but for demo we use sequential writes with error handling)
+    // 6. Create game session in DB
     const { data: session, error: sessionError } = await supabase
       .from('game_sessions')
       .insert({
@@ -79,30 +78,16 @@ export async function POST(req: NextRequest) {
     const { error: balanceError } = await supabase
       .from('players')
       .update({
-        balance: player.balance - TICKET_COST,
-        total_wagered: supabase.rpc as any, // updated via trigger or manual
+        balance: Number(player.balance) - TICKET_COST,
+        total_wagered: Number(player.total_wagered) + TICKET_COST,
       })
       .eq('id', user.id);
 
-    // Update balance + total_wagered
-    await supabase.rpc('deduct_balance_and_wager', {
-      p_player_id: user.id,
-      p_amount: TICKET_COST,
-    }).then(() => {}).catch(() => {
-      // Fallback: manual update
-      supabase.from('players')
-        .update({ balance: player.balance - TICKET_COST })
-        .eq('id', user.id);
-    });
-
-    // Simple balance update (no RPC)
-    await supabase
-      .from('players')
-      .update({
-        balance: player.balance - TICKET_COST,
-        total_wagered: player.balance, // will be overridden
-      })
-      .eq('id', user.id);
+    if (balanceError) {
+      // Rollback: delete the created session
+      await supabase.from('game_sessions').delete().eq('id', session.id);
+      return NextResponse.json({ error: 'Error al procesar el pago' }, { status: 500 });
+    }
 
     return NextResponse.json({
       session_id: session.id,

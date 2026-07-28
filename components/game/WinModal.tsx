@@ -1,16 +1,44 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 
 interface WinModalProps {
   payout: number;
   onPlayAgain: () => void;
 }
 
+interface ConfettiParticle {
+  id: number;
+  left: string;
+  background: string;
+  size: string;
+  rotate: number;
+  duration: number;
+  delay: number;
+}
+
 export default function WinModal({ payout, onPlayAgain }: WinModalProps) {
   const isJackpot = payout >= 10;
   const isBreakEven = payout === 2;
+
+  // Partículas generadas tras el montaje: Math.random no puede correr en
+  // render (pureza/hidratación), así que el único punto válido es un efecto.
+  const [confetti, setConfetti] = useState<ConfettiParticle[]>([]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setConfetti(
+      [...Array(30)].map((_, i) => ({
+        id: i,
+        left: `${Math.random() * 100}%`,
+        background: `hsl(${Math.random() * 60 + 30}, 100%, 60%)`,
+        size: `${Math.random() * 8 + 4}px`,
+        rotate: Math.random() * 720 - 360,
+        duration: Math.random() * 2 + 1.5,
+        delay: Math.random() * 0.5,
+      }))
+    );
+  }, []);
 
   return (
     <motion.div
@@ -20,25 +48,25 @@ export default function WinModal({ payout, onPlayAgain }: WinModalProps) {
       exit={{ opacity: 0 }}
     >
       {/* Confetti particles */}
-      {[...Array(30)].map((_, i) => (
+      {confetti.map((p) => (
         <motion.div
-          key={i}
+          key={p.id}
           className="confetti-particle"
           style={{
-            left: `${Math.random() * 100}%`,
-            background: `hsl(${Math.random() * 60 + 30}, 100%, 60%)`,
-            width: `${Math.random() * 8 + 4}px`,
-            height: `${Math.random() * 8 + 4}px`,
+            left: p.left,
+            background: p.background,
+            width: p.size,
+            height: p.size,
           }}
           initial={{ top: '-10px', opacity: 1, rotate: 0 }}
           animate={{
             top: '110%',
             opacity: [1, 1, 0],
-            rotate: Math.random() * 720 - 360,
+            rotate: p.rotate,
           }}
           transition={{
-            duration: Math.random() * 2 + 1.5,
-            delay: Math.random() * 0.5,
+            duration: p.duration,
+            delay: p.delay,
             ease: 'easeIn',
           }}
         />

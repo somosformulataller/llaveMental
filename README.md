@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🗝️ La Llave Correcta
 
-## Getting Started
+Juego web PWA tipo scratch-card con mecánica pre-determinada (server-authoritative). El jugador paga $2 por ticket para intentar abrir una cerradura con 10 llaves. El resultado está fijado por el servidor al momento de comprar el ticket — las elecciones del usuario solo desencadenan la narrativa.
 
-First, run the development server:
+**Stack:** Next.js 16 · Supabase · Framer Motion · next-pwa · TypeScript
+
+**Arquitectura SPA:** las pantallas (`/`, `/game`, `/admin`) son páginas estáticas pre-renderizadas con navegación cliente instantánea — el Header y el shell persisten entre pantallas (route group `(main)`), las transiciones las hace Framer Motion (`template.tsx`) y el perfil del jugador vive en un contexto global (`PlayerProvider`) que se carga una sola vez.
+
+**Perfiles:** hay dos roles — `player` (registro normal desde la app) y `admin` (se promueve por base de datos, ver abajo). El admin tiene un panel en `/admin` con métricas en vivo, lista de jugadores y últimas partidas.
+
+---
+
+## Inicio rápido
+
+### 1. Variables de entorno
+
+Copia el archivo de ejemplo y rellena tus credenciales de Supabase:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.local.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 2. Inicializar base de datos
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+En el **SQL Editor** de tu dashboard de Supabase, ejecuta **en orden**:
 
-## Learn More
+```
+supabase/migrations/001_game_tables.sql   -- tablas, RLS, trigger de registro
+supabase/migrations/002_admin_role.sql    -- rol admin + políticas de lectura
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 2.1 Crear el administrador
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+El admin no se registra como admin desde la app: primero crea su cuenta normalmente (email/password en `/auth/login`) y luego promuévelo en el SQL Editor:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```sql
+UPDATE public.players
+SET role = 'admin'
+WHERE id = (SELECT id FROM auth.users WHERE email = 'admin@tudominio.com');
+```
 
-## Deploy on Vercel
+Al iniciar sesión, el admin es redirigido automáticamente a `/admin`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 3. Correr en desarrollo
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm install
+npm run dev -- --webpack
+```
+
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+
+### 4. Build de producción
+
+```bash
+npm run build
+npm start
+```
+
+### 5. Deploy en Vercel
+
+```bash
+npx vercel --prod
+```
+
+Recuerda agregar las variables de entorno en el dashboard de Vercel
+(**Project → Settings → Environment Variables**):
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+Y en Supabase (**Auth → URL Configuration**) agrega la URL de producción:
+
+- Site URL: `https://tu-app.vercel.app`
+- Redirect URL: `https://tu-app.vercel.app/auth/callback`
+
+---
+
+## Estado del proyecto (27 jul 2026)
+
+**Hecho:** juego completo (RNG server-authoritative, animaciones, sonido), login/registro de jugador (email + Google), rol admin con panel `/admin` (métricas en vivo, RTP real, jugadores, partidas), redirección por rol, arquitectura SPA (pantallas estáticas instantáneas, shell persistente, transiciones animadas), PWA (manifest + service worker + banner de instalación). `lint`, `tsc` y `build` pasan sin errores.
+
+**Falta (bloqueante):** crear el proyecto en Supabase, pegar las credenciales reales en `.env.local` (hoy tiene placeholders), ejecutar las migraciones `001` + `002`, promover el admin por SQL y hacer el deploy en Vercel (la CLI ya está logueada). El detalle completo está en la sección "Pendiente" del plan.
+
+---
+
+## Documentación
+
+- 📋 [Plan de Implementación](./IMPLEMENTATION_PLAN.md) — Arquitectura SPA, base de datos y roles, RNG, endpoints (incl. panel admin), seguridad, plan de verificación y checklist de pendientes.
+
+---
+
+## Modelo matemático (RTP 98%)
+
+| Premio | Fallos | Probabilidad |
+|--------|--------|-------------|
+| $0     | 5      | 34%         |
+| $2     | 4      | 46%         |
+| $4     | 3      | 12%         |
+| $6     | 2      | 5%          |
+| $8     | 1      | 2%          |
+| $10    | 0      | 1%          |
+
+**EV = $1.96 por ticket de $2.00 → RTP 98%**

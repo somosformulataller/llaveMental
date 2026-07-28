@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Rajdhani } from 'next/font/google';
+import { PlayerProvider } from '@/components/providers/PlayerProvider';
 import './globals.css';
 
 const inter = Inter({
@@ -49,7 +50,9 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
       </head>
-      <body className="app-body">{children}</body>
+      <body className="app-body">
+        <PlayerProvider>{children}</PlayerProvider>
+      </body>
     </html>
   );
 }

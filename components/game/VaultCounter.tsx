@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, useSpring, useTransform } from 'framer-motion';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 interface VaultCounterProps {
   amount: number;

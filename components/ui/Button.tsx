@@ -1,9 +1,9 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { ButtonHTMLAttributes, ReactNode } from 'react';
+import { motion, HTMLMotionProps } from 'framer-motion';
+import { ReactNode } from 'react';
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends HTMLMotionProps<'button'> {
   children: ReactNode;
   variant?: 'primary' | 'secondary' | 'danger';
   isLoading?: boolean;
@@ -21,7 +21,7 @@ export default function Button({
       className={`btn btn-${variant} ${className}`}
       whileHover={{ scale: 1.03 }}
       whileTap={{ scale: 0.97 }}
-      {...(props as any)}
+      {...props}
     >
       {isLoading ? (
         <span className="btn-spinner" />
