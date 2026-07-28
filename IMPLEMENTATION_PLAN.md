@@ -486,7 +486,7 @@ npm run build
 
 ---
 
-## 📌 Estado de la configuración (27 jul 2026, noche)
+## 📌 Estado de la configuración (28 jul 2026)
 
 ### Supabase — proyecto `vsqizqujohptohrjjtqy`
 
@@ -499,7 +499,7 @@ npm run build
 | Crear usuario de prueba (jugador) | ✅ | **`jugador.prueba.llave@gmail.com` / `Prueba123!`** — login verificado por API, perfil auto-creado con $100, rol `player`. Nota: Supabase rechaza dominios tipo `@example.com` |
 | Crear el usuario admin | ⬜ | Registrar la cuenta desde la app y promover con `UPDATE ... SET role='admin'` (SQL en la migración 002 y el README) |
 | Google OAuth (opcional) | ⬜ | Está desactivado (verificado). Auth → Providers → Google + credenciales de Google Cloud Console |
-| URLs de producción en Auth | ⬜ | Auth → URL Configuration: Site URL + Redirect `https://<dominio-producción>/auth/callback` (poner la URL final de Vercel) |
+| URLs de producción en Auth | ⬜ | Auth → URL Configuration: Site URL `https://llave-mental.vercel.app` + Redirect `https://llave-mental.vercel.app/auth/callback` |
 
 ### Vercel — proyecto `formula-taller/llave-mental`
 
@@ -507,8 +507,8 @@ npm run build
 |-------|:------:|---------|
 | Proyecto creado y vinculado | ✅ | Creado vía CLI (`vercel link`). Nota: se llamó `llave-mental`; no hace falta crear otro proyecto "llaveMental" a mano — sería un duplicado |
 | Variables de entorno | ✅ | `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` en Production y Preview |
-| Deploy a producción | ✅ | ● Ready: `https://llave-mental-eupdgd35o-formula-taller.vercel.app` (se corrigieron `outputFileTracingRoot` y el flag `--webpack` del build) |
-| Repo en GitHub | ⬜ | El código ya está commiteado en git local (rama `main`). Falta: crear el repo en github.com (ej. `llaveMental`), hacer `git remote add origin <url>` + `git push -u origin main`, y conectarlo al proyecto Vercel (`npx vercel git connect` o dashboard → Settings → Git) para auto-deploys en cada push |
+| Deploy a producción | ✅ | ● Ready: **`https://llave-mental.vercel.app`** (incluye la experiencia 3D medieval) |
+| Repo en GitHub | ✅ | `https://github.com/somosformulataller/llaveMental` — rama `master` pusheada y conectada al proyecto Vercel (`vercel git connect`): cada push a `master` dispara un deploy automático |
 
 ### Local
 
