@@ -35,9 +35,9 @@ function useWoodTexture(): THREE.CanvasTexture {
     c.height = 1024;
     const ctx = c.getContext('2d')!;
     const base = ctx.createLinearGradient(0, 0, 512, 0);
-    base.addColorStop(0, '#4a2a11');
-    base.addColorStop(0.5, '#5c351b');
-    base.addColorStop(1, '#472810');
+    base.addColorStop(0, '#301a09');
+    base.addColorStop(0.5, '#3e2310');
+    base.addColorStop(1, '#2d1808');
     ctx.fillStyle = base;
     ctx.fillRect(0, 0, 512, 1024);
     // Vetas verticales (deterministas: sin Math.random en render)
@@ -199,9 +199,9 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
         envMapIntensity: envInt,
       });
     return {
-      slab: mk('#b9a892', 0.52, 0.3),
-      frame: mk('#f5e2c8', 0.4, 0.5),
-      field: mk('#e2ccb0', 0.44, 0.4),
+      slab: mk('#a08d78', 0.52, 0.25),
+      frame: mk('#e0c8a8', 0.4, 0.45),
+      field: mk('#c9b192', 0.44, 0.35),
     };
   }, [woodTex, envMap]);
 
