@@ -202,9 +202,9 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
     // relieve lo dibuja la luz, no el color) y poco reflejo — el mapa
     // de entorno es muy brillante y aclara la madera si se sube.
     return {
-      slab: mk('#6e5f4f', 0.55, 0.1),
-      frame: mk('#8f7a60', 0.45, 0.18),
-      field: mk('#7d6b53', 0.48, 0.14),
+      slab: mk('#4e4236', 0.58, 0.06),
+      frame: mk('#665645', 0.5, 0.12),
+      field: mk('#584a3a', 0.52, 0.08),
     };
   }, [woodTex, envMap]);
 
