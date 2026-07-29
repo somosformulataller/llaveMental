@@ -18,7 +18,7 @@ export default function VaultCounter({ amount, isDecreasing = false }: VaultCoun
 
   return (
     <div className="vault-counter-container">
-      <p className="vault-label">💰 POZO ACTUAL</p>
+      <p className="vault-label">💰 PREMIO ACTUAL</p>
       <motion.div
         className="vault-amount-wrapper"
         animate={

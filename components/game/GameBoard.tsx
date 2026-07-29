@@ -28,6 +28,8 @@ export default function GameBoard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [buyOpen, setBuyOpen] = useState(false);
+  // true cuando ya se consultó si había una partida activa que reanudar
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   // Audio refs
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -95,14 +97,17 @@ export default function GameBoard() {
         if (cancelled || !data.session) return;
         resumeSession(data.session.session_id, data.session.vault, data.session.keys_tried);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setSessionChecked(true);
+      });
     return () => {
       cancelled = true;
     };
   }, [resumeSession]);
 
   // Empezar una partida (consume 1 ticket)
-  const handlePlay = async () => {
+  const handlePlay = useCallback(async () => {
     if (!player) {
       setError('Debes iniciar sesión para jugar');
       return;
@@ -144,7 +149,20 @@ export default function GameBoard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [player, resumeSession, updatePlayer]);
+
+  // Con tickets disponibles la partida arranca SOLA: el jugador entra
+  // directo a la escena sin pasar por el botón "Jugar". Espera a saber
+  // si había una partida que reanudar y no reintenta si hubo un error
+  // (ahí sí se muestra el botón para intentarlo a mano).
+  useEffect(() => {
+    if (!sessionChecked || gameStatus !== 'IDLE' || isLoading || error || buyOpen) return;
+    if (!player || (player.tickets ?? 0) < 1) return;
+    // El arranque es asíncrono (fetch): el setState ocurre tras la
+    // respuesta, no en el cuerpo del efecto (falso positivo).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    handlePlay();
+  }, [sessionChecked, gameStatus, isLoading, error, buyOpen, player, handlePlay]);
 
   // Key attempt
   const handleKeyClick = async (keyId: number) => {
@@ -327,8 +345,18 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
-      {/* Idle state: jugar / comprar tickets */}
-      {gameStatus === 'IDLE' && (
+      {/* Idle state: jugar / comprar tickets. Con tickets y sin error
+          la partida arranca sola, así que no se muestra el botón. */}
+      {gameStatus === 'IDLE' && player && tickets > 0 && !error && (
+        <motion.div
+          className="idle-section"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <p className="idle-cost loading-dots">🔑 Preparando tu partida…</p>
+        </motion.div>
+      )}
+      {gameStatus === 'IDLE' && !(player && tickets > 0 && !error) && (
         <motion.div
           className="idle-section"
           initial={{ opacity: 0, scale: 0.9 }}
