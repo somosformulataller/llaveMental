@@ -57,7 +57,7 @@ export default function Header() {
       ]
     : [
         { label: '👛 Canjear o retirar', path: '/billetera' },
-        { label: '🎟️ Comprar más tickets', path: '/comprar' },
+        { label: '🎟️ Comprar Tickets', path: '/comprar' },
         { label: '🏆 Ranking', path: '/ranking' },
         { label: '🔑 Jugar', path: '/game' },
       ];
@@ -75,7 +75,7 @@ export default function Header() {
               aria-haspopup="menu"
             >
               <span className="header-select-label">
-                {isAdmin ? '👑 Menú' : '🎟️ Comprar más tickets'}
+                {isAdmin ? '👑 Menú' : '🎟️ Comprar Tickets'}
               </span>
               <span className={`menu-caret ${menuOpen ? 'menu-caret-open' : ''}`}>▾</span>
             </button>
