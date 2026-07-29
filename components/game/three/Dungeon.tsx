@@ -59,7 +59,7 @@ function useWoodTexture(): THREE.CanvasTexture {
       const w = 26 + seededRand(i * 13 + 71) * 50;
       const g = ctx.createLinearGradient(x - w, 0, x + w, 0);
       g.addColorStop(0, 'rgba(255,206,140,0)');
-      g.addColorStop(0.5, 'rgba(255,206,140,0.07)');
+      g.addColorStop(0.5, 'rgba(255,206,140,0.05)');
       g.addColorStop(1, 'rgba(255,206,140,0)');
       ctx.fillStyle = g;
       ctx.fillRect(x - w, 0, w * 2, 1024);
@@ -193,15 +193,18 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
         bumpScale: 0.02,
         color: tint,
         roughness,
-        clearcoat: 0.55,
-        clearcoatRoughness: 0.28,
+        clearcoat: 0.4,
+        clearcoatRoughness: 0.38,
         envMap,
         envMapIntensity: envInt,
       });
+    // Marrón OSCURO como la referencia: tintes cerrados entre sí (el
+    // relieve lo dibuja la luz, no el color) y poco reflejo — el mapa
+    // de entorno es muy brillante y aclara la madera si se sube.
     return {
-      slab: mk('#8d7a64', 0.52, 0.22),
-      frame: mk('#cdb28c', 0.4, 0.4),
-      field: mk('#b39a77', 0.44, 0.3),
+      slab: mk('#6e5f4f', 0.55, 0.1),
+      frame: mk('#8f7a60', 0.45, 0.18),
+      field: mk('#7d6b53', 0.48, 0.14),
     };
   }, [woodTex, envMap]);
 
@@ -371,7 +374,7 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
         />
       </mesh>
       {/* Luz cálida frontal: baña la puerta y las llaves como en la referencia */}
-      <pointLight position={[0.4, 1.4, 1.7]} color="#ffb45e" intensity={5} distance={7} decay={2} />
+      <pointLight position={[0.4, 1.4, 1.7]} color="#ffb45e" intensity={3.5} distance={7} decay={2} />
 
       {/* ── Puerta (bisagra en el borde izquierdo) ── */}
       <group ref={doorRef} position={[DOOR_HINGE_X, 0, -0.05]}>
