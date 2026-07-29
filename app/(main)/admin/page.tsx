@@ -242,6 +242,11 @@ export default function AdminPage() {
           <div className="stat-label">Ganancia del juego</div>
         </div>
       </div>
+      <p className="admin-hint">
+        📐 RTP teórico: <strong>98%</strong> — la casa retiene un <strong>2%</strong> de lo
+        apostado (premio esperado $1.96 por ticket de $2.00 ≈ $0.04 de ganancia por partida
+        en promedio). El &quot;RTP real&quot; de arriba es lo efectivamente pagado hasta ahora.
+      </p>
 
       {/* Finanzas reales */}
       <div className="admin-stats-grid">
@@ -511,12 +516,15 @@ export default function AdminPage() {
                 <th>Tickets</th>
                 <th>Apostado</th>
                 <th>Ganado</th>
+                <th>Ganancia nuestra</th>
                 <th>Registro</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {(data?.players ?? []).map((p) => (
+              {(data?.players ?? []).map((p) => {
+                const houseTake = Number(p.total_wagered) - Number(p.total_won);
+                return (
                 <tr key={p.id}>
                   <td>{p.username || p.id.slice(0, 8)}</td>
                   <td>{p.role === 'admin' ? '👑 admin' : 'jugador'}</td>
@@ -524,6 +532,9 @@ export default function AdminPage() {
                   <td>{Number(p.tickets ?? 0)}</td>
                   <td>{fmt(Number(p.total_wagered))}</td>
                   <td>{fmt(Number(p.total_won))}</td>
+                  <td className={houseTake >= 0 ? 'admin-win' : 'admin-lose'}>
+                    {houseTake >= 0 ? '+' : '−'}{fmt(Math.abs(houseTake))}
+                  </td>
                   <td>{fmtDate(p.created_at)}</td>
                   <td>
                     {p.role !== 'admin' && (
@@ -546,10 +557,11 @@ export default function AdminPage() {
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {data && data.players.length === 0 && (
                 <tr>
-                  <td colSpan={8}>Sin jugadores todavía</td>
+                  <td colSpan={9}>Sin jugadores todavía</td>
                 </tr>
               )}
             </tbody>
@@ -568,10 +580,15 @@ export default function AdminPage() {
                 <th>Jugador</th>
                 <th>Llaves usadas</th>
                 <th>Premio</th>
+                <th>Ganancia nuestra</th>
               </tr>
             </thead>
             <tbody>
-              {(data?.recent_games ?? []).map((g) => (
+              {(data?.recent_games ?? []).map((g) => {
+                // Cada partida cuesta 1 ticket ($2.00): lo que no se
+                // paga en premio queda para la casa (y al revés).
+                const houseTake = 2 - Number(g.payout);
+                return (
                 <tr key={g.id}>
                   <td>{fmtDate(g.created_at)}</td>
                   <td>{g.username || g.player_id.slice(0, 8)}</td>
@@ -579,11 +596,15 @@ export default function AdminPage() {
                   <td className={Number(g.payout) > 0 ? 'admin-win' : 'admin-lose'}>
                     {fmt(Number(g.payout))}
                   </td>
+                  <td className={houseTake >= 0 ? 'admin-win' : 'admin-lose'}>
+                    {houseTake >= 0 ? '+' : '−'}{fmt(Math.abs(houseTake))}
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
               {data && data.recent_games.length === 0 && (
                 <tr>
-                  <td colSpan={4}>Sin partidas todavía</td>
+                  <td colSpan={5}>Sin partidas todavía</td>
                 </tr>
               )}
             </tbody>
