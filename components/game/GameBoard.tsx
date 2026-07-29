@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import GameScene from './GameScene';
 import VaultCounter from './VaultCounter';
-import WinModal from './WinModal';
 import LoseModal from './LoseModal';
 import BuyTicketsModal from '@/components/payments/BuyTicketsModal';
 import { usePlayer } from '@/components/providers/PlayerProvider';
@@ -23,7 +22,8 @@ export default function GameBoard() {
     Array(TOTAL_KEYS).fill('IDLE')
   );
   const [lockStatus, setLockStatus] = useState<LockStatus>('IDLE');
-  const [finalPayout, setFinalPayout] = useState(0);
+  // Aviso flotante (no bloqueante) con el premio ganado
+  const [winBanner, setWinBanner] = useState<number | null>(null);
   const [isDecreasing, setIsDecreasing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -228,7 +228,6 @@ export default function GameBoard() {
         if (data.game_over || data.vault <= 0) {
           setTimeout(() => {
             setGameStatus('COMPLETED_LOSE');
-            setFinalPayout(0);
           }, 1000);
         }
       } else if (data.animation === 'LOCK_OPENED') {
@@ -247,11 +246,12 @@ export default function GameBoard() {
         }, 1200);
 
         // Secuencia cinemática: la llave gira (~1s), la puerta se abre
-        // y la cámara avanza al tesoro; el modal espera a que se vea.
-        setTimeout(() => {
-          setGameStatus('COMPLETED_WIN');
-          setFinalPayout(data.payout);
-        }, 5200);
+        // y la cámara avanza al tesoro. SIN modal: se muestra un aviso
+        // flotante con el premio y la escena se reinicia sola para
+        // seguir jugando (con tickets, la siguiente arranca al instante).
+        setTimeout(() => setWinBanner(data.payout), 5200);
+        setTimeout(() => handlePlayAgain(), 7000);
+        setTimeout(() => setWinBanner(null), 11_000);
       }
     } catch {
       setError('Error de conexión');
@@ -271,7 +271,6 @@ export default function GameBoard() {
     setVault(INITIAL_VAULT);
     setKeyStatuses(Array(TOTAL_KEYS).fill('IDLE'));
     setLockStatus('IDLE');
-    setFinalPayout(0);
     setError(null);
     refresh();
   };
@@ -301,9 +300,22 @@ export default function GameBoard() {
         onKeyClick={handleKeyClick}
       />
 
-      {/* UI superpuesta — arriba: el pozo */}
+      {/* UI superpuesta — arriba: el premio */}
       <div className="game-overlay game-overlay-top">
         <VaultCounter amount={vault} isDecreasing={isDecreasing} />
+        <AnimatePresence>
+          {winBanner !== null && (
+            <motion.div
+              className="win-banner"
+              initial={{ opacity: 0, y: -12, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+            >
+              🏆 ¡Ganaste <strong>${winBanner.toFixed(2)}</strong>! Ya está en tu saldo
+            </motion.div>
+          )}
+        </AnimatePresence>
         <AnimatePresence>
           {error && (
             <motion.div
@@ -413,11 +425,8 @@ export default function GameBoard() {
       )}
       </div>
 
-      {/* Win / Lose modals */}
+      {/* Al ganar NO hay modal: solo el aviso y se sigue jugando */}
       <AnimatePresence>
-        {gameStatus === 'COMPLETED_WIN' && (
-          <WinModal payout={finalPayout} onPlayAgain={handlePlayAgain} />
-        )}
         {gameStatus === 'COMPLETED_LOSE' && (
           <LoseModal onPlayAgain={handlePlayAgain} />
         )}

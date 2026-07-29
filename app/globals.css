@@ -2000,6 +2000,25 @@ select.ref-input { appearance: auto; }
   .wallet-grid { grid-template-columns: 1fr; }
 }
 
+/* Aviso flotante al ganar (no bloquea: se sigue jugando) */
+.win-banner {
+  pointer-events: none;
+  margin: 8px auto 0;
+  width: fit-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--bg-surface-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-gold);
+  color: var(--gold-2);
+  font-size: 0.95rem;
+  text-align: center;
+  box-shadow: var(--shadow-gold);
+}
+.win-banner strong { color: var(--gold-1); }
+
 /* ============================================
    CHAT DE ATENCIÓN AL CLIENTE
    ============================================ */
