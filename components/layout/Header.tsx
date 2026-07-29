@@ -52,6 +52,7 @@ export default function Header() {
   const menuItems = isAdmin
     ? [
         { label: '👑 Admin', path: '/admin' },
+        { label: '💬 Chat de atención', path: '/admin/chat' },
         { label: '🏆 Ranking', path: '/ranking' },
       ]
     : [

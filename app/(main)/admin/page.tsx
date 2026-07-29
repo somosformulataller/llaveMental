@@ -158,6 +158,35 @@ export default function AdminPage() {
     navigator.clipboard?.writeText(text).catch(() => {});
   };
 
+  // Recarga manual de tickets (positivo suma, negativo resta)
+  const adjustTickets = async (playerId: string, username: string | null, sign: 1 | -1) => {
+    const raw = prompt(
+      `¿Cuántos tickets quieres ${sign === 1 ? 'RECARGAR a' : 'RESTAR a'} ${username || playerId.slice(0, 8)}?`
+    );
+    if (!raw) return;
+    const qty = Math.trunc(Number(raw));
+    if (!Number.isFinite(qty) || qty <= 0) {
+      alert('Escribe una cantidad válida');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch('/api/admin/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_id: playerId, delta: qty * sign }),
+      });
+      const json = await res.json();
+      if (!res.ok) alert(json.error || 'No se pudo actualizar');
+      else alert(`Listo: ${username || 'el jugador'} ahora tiene ${json.tickets} ticket(s).`);
+      await loadAll();
+    } catch {
+      alert('Error de conexión');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!isAdmin) return null;
 
   const stats = data?.stats;
@@ -173,7 +202,8 @@ export default function AdminPage() {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="admin-title">👑 Panel de Administración</h1>
         <p className="admin-subtitle">
-          Métricas en tiempo real del juego · se actualiza cada 30s
+          Métricas en tiempo real del juego · se actualiza cada 30s ·{' '}
+          <a href="/admin/chat" className="admin-link">💬 Chat de atención al cliente</a>
         </p>
       </motion.div>
 
@@ -482,6 +512,7 @@ export default function AdminPage() {
                 <th>Apostado</th>
                 <th>Ganado</th>
                 <th>Registro</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -494,11 +525,31 @@ export default function AdminPage() {
                   <td>{fmt(Number(p.total_wagered))}</td>
                   <td>{fmt(Number(p.total_won))}</td>
                   <td>{fmtDate(p.created_at)}</td>
+                  <td>
+                    {p.role !== 'admin' && (
+                      <span className="admin-actions">
+                        <button
+                          className="btn-mini"
+                          disabled={busy}
+                          onClick={() => adjustTickets(p.id, p.username, 1)}
+                        >
+                          ＋🎟️
+                        </button>
+                        <button
+                          className="btn-mini"
+                          disabled={busy}
+                          onClick={() => adjustTickets(p.id, p.username, -1)}
+                        >
+                          −🎟️
+                        </button>
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {data && data.players.length === 0 && (
                 <tr>
-                  <td colSpan={7}>Sin jugadores todavía</td>
+                  <td colSpan={8}>Sin jugadores todavía</td>
                 </tr>
               )}
             </tbody>
