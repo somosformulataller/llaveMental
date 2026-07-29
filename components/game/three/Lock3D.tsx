@@ -13,7 +13,13 @@ interface Lock3DProps {
 }
 
 const RED_FLASH = new THREE.Color('#ff2e3f');
+const RED_DEEP = new THREE.Color('#c41220');
 const GOLD_GLOW = new THREE.Color('#ffb84d');
+// Colores base de cada material (para volver del rojo al dorado)
+const GOLD_BASE = new THREE.Color('#c8942f');
+const TRIM_BASE = new THREE.Color('#e6bd57');
+const GLOW_GOLD = new THREE.Color('#ffcf6e');
+const GLOW_RED = new THREE.Color('#ff3b4a');
 
 // Placa con esquinas redondeadas (para extruir con bisel)
 function roundedRectShape(w: number, h: number, r: number): THREE.Shape {
@@ -86,30 +92,45 @@ export default function Lock3D({ status, envMap }: Lock3DProps) {
     const glow = glowMatRef.current;
     if (!g || !glow) return;
     const t = state.clock.elapsedTime;
-    const mats = [goldMat, trimMat];
+    const k = 1 - Math.exp(-14 * delta);
+    const mats: [THREE.MeshPhysicalMaterial, THREE.Color][] = [
+      [goldMat, GOLD_BASE],
+      [trimMat, TRIM_BASE],
+    ];
 
     if (status === 'SHAKE') {
+      // TODA la cerradura se pone roja: color base + emisivo fuerte +
+      // halo rojo, y sin reflejos dorados que laven el rojo.
       g.position.x = LOCK_LOCAL_POS[0] + Math.sin(t * 55) * 0.035;
       g.position.y = LOCK_LOCAL_POS[1] + Math.sin(t * 47) * 0.02;
-      for (const m of mats) {
+      for (const [m] of mats) {
+        m.color.lerp(RED_DEEP, k);
         m.emissive.copy(RED_FLASH);
-        m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, 0.55, 10, delta);
+        m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, 1.4, 14, delta);
+        m.envMapIntensity = THREE.MathUtils.damp(m.envMapIntensity, 0.1, 12, delta);
       }
-      glow.opacity = THREE.MathUtils.damp(glow.opacity, 0, 8, delta);
+      glow.color.lerp(GLOW_RED, k);
+      glow.opacity = THREE.MathUtils.damp(glow.opacity, 0.6, 10, delta);
     } else if (status === 'OPEN') {
       g.position.x = THREE.MathUtils.damp(g.position.x, LOCK_LOCAL_POS[0], 12, delta);
       g.position.y = THREE.MathUtils.damp(g.position.y, LOCK_LOCAL_POS[1], 12, delta);
-      for (const m of mats) {
+      for (const [m, base] of mats) {
+        m.color.lerp(base, k);
         m.emissive.copy(GOLD_GLOW);
         m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, 0.35, 6, delta);
+        m.envMapIntensity = THREE.MathUtils.damp(m.envMapIntensity, 1.2, 8, delta);
       }
+      glow.color.lerp(GLOW_GOLD, k);
       glow.opacity = THREE.MathUtils.damp(glow.opacity, 0.95, 6, delta);
     } else {
       g.position.x = THREE.MathUtils.damp(g.position.x, LOCK_LOCAL_POS[0], 12, delta);
       g.position.y = THREE.MathUtils.damp(g.position.y, LOCK_LOCAL_POS[1], 12, delta);
-      for (const m of mats) {
+      for (const [m, base] of mats) {
+        m.color.lerp(base, k);
         m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, 0, 8, delta);
+        m.envMapIntensity = THREE.MathUtils.damp(m.envMapIntensity, 1.2, 8, delta);
       }
+      glow.color.lerp(GLOW_GOLD, k);
       glow.opacity = THREE.MathUtils.damp(glow.opacity, 0, 8, delta);
     }
   });
