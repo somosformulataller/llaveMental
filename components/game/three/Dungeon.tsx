@@ -175,8 +175,8 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
             </mesh>
           ))
         )}
-        {/* Argolla */}
-        <mesh position={[1.75, 1.95, 0.1]} rotation={[0.35, 0, 0]}>
+        {/* Argolla (debajo de la cerradura, que ahora va más arriba) */}
+        <mesh position={[1.75, 1.45, 0.1]} rotation={[0.35, 0, 0]}>
           <torusGeometry args={[0.11, 0.022, 10, 24]} />
           <meshStandardMaterial color="#33353d" metalness={0.9} roughness={0.4} />
         </mesh>
