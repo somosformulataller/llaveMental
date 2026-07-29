@@ -10,6 +10,51 @@ import Lock3D from './Lock3D';
 import Treasure from './Treasure';
 import { DOOR_HINGE_X, seededRand } from './constants';
 
+// Textura de madera pulida generada por código: vetas verticales con
+// ligera ondulación, nudos sutiles y variación de tono. Se usa como
+// mapa de color Y de relieve (bump) en la puerta y sus paneles.
+function useWoodTexture(): THREE.CanvasTexture {
+  return useMemo(() => {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 512;
+    const ctx = c.getContext('2d')!;
+    const base = ctx.createLinearGradient(0, 0, 256, 0);
+    base.addColorStop(0, '#4a2a11');
+    base.addColorStop(0.5, '#5a341b');
+    base.addColorStop(1, '#472810');
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, 256, 512);
+    // Vetas verticales (deterministas: sin Math.random en render)
+    for (let i = 0; i < 90; i++) {
+      const x = seededRand(i * 3 + 1) * 256;
+      const w = 0.6 + seededRand(i * 3 + 2) * 2.2;
+      const light = seededRand(i * 3 + 3) > 0.5;
+      ctx.strokeStyle = light ? 'rgba(128,78,34,0.26)' : 'rgba(24,12,4,0.3)';
+      ctx.lineWidth = w;
+      const wob = (seededRand(i * 7 + 5) - 0.5) * 20;
+      ctx.beginPath();
+      ctx.moveTo(x, -10);
+      ctx.bezierCurveTo(x + wob, 128, x - wob, 384, x + wob * 0.5, 522);
+      ctx.stroke();
+    }
+    // Nudos sutiles
+    for (let i = 0; i < 5; i++) {
+      const nx = seededRand(i * 11 + 40) * 256;
+      const ny = seededRand(i * 11 + 41) * 512;
+      const g = ctx.createRadialGradient(nx, ny, 1, nx, ny, 13);
+      g.addColorStop(0, 'rgba(28,14,5,0.45)');
+      g.addColorStop(1, 'rgba(28,14,5,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(nx - 13, ny - 13, 26, 26);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 8;
+    return tex;
+  }, []);
+}
+
 // Textura de resplandor (degradado radial cálido) generada por código:
 // se usa detrás de la puerta y sobre el piso para el "glow" dorado.
 function useGlowTexture(): THREE.CanvasTexture {
@@ -77,7 +122,28 @@ const PANEL_ROWS = [0.66, 1.72, 2.78];
 export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
   const bricks = useBricks();
   const glowTex = useGlowTexture();
+  const woodTex = useWoodTexture();
   const doorRef = useRef<THREE.Group>(null);
+
+  // Materiales de madera compartidos: la MISMA veta con distinto tono
+  // por nivel del relieve (el multiplicador de color solo oscurece,
+  // así el marco queda claro y la garganta en sombra).
+  const doorMats = useMemo(() => {
+    const mk = (tint: string, roughness: number) =>
+      new THREE.MeshStandardMaterial({
+        map: woodTex,
+        bumpMap: woodTex,
+        bumpScale: 0.02,
+        color: tint,
+        roughness,
+      });
+    return {
+      slab: mk('#b9a892', 0.52),
+      frame: mk('#f5e2c8', 0.42),
+      groove: mk('#5e5044', 0.6),
+      field: mk('#e2ccb0', 0.45),
+    };
+  }, [woodTex]);
   const treasureLight = useRef<THREE.PointLight>(null);
   const openTimer = useRef(0);
   const open = lockStatus === 'OPEN';
@@ -198,34 +264,36 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
 
       {/* ── Puerta (bisagra en el borde izquierdo) ── */}
       <group ref={doorRef} position={[DOOR_HINGE_X, 0, -0.05]}>
-        {/* Hoja de madera pulida oscura */}
-        <mesh position={[1.2, 1.72, 0]}>
+        {/* Hoja de madera pulida oscura (con veta y relieve) */}
+        <mesh material={doorMats.slab} position={[1.2, 1.72, 0]}>
           <boxGeometry args={[2.36, 3.44, 0.08]} />
-          <meshStandardMaterial color="#41240f" roughness={0.5} />
         </mesh>
         {/* Junta central: la puerta se lee como dos hojas */}
         <mesh position={[1.2, 1.72, 0.041]}>
           <boxGeometry args={[0.035, 3.44, 0.012]} />
           <meshStandardMaterial color="#1c0f06" roughness={0.85} />
         </mesh>
-        {/* Paneles tallados en relieve (marco + centro que sobresale) */}
+        {/* Paneles tallados: moldura en tres niveles como la referencia
+            (marco claro que atrapa la luz → garganta en sombra →
+            campo central que sobresale) */}
         {PANEL_COLS.map((x) =>
           PANEL_ROWS.map((y) => (
             <group key={`${x}-${y}`} position={[x, y, 0]}>
-              <mesh position={[0, 0, 0.045]}>
-                <boxGeometry args={[0.88, 0.94, 0.03]} />
-                <meshStandardMaterial color="#5a3419" roughness={0.45} />
+              <mesh material={doorMats.frame} position={[0, 0, 0.045]}>
+                <boxGeometry args={[0.92, 0.98, 0.03]} />
               </mesh>
-              <mesh position={[0, 0, 0.058]}>
-                <boxGeometry args={[0.6, 0.66, 0.035]} />
-                <meshStandardMaterial color="#4a2a12" roughness={0.42} />
+              <mesh material={doorMats.groove} position={[0, 0, 0.052]}>
+                <boxGeometry args={[0.76, 0.82, 0.028]} />
+              </mesh>
+              <mesh material={doorMats.field} position={[0, 0, 0.062]}>
+                <boxGeometry args={[0.58, 0.64, 0.034]} />
               </mesh>
             </group>
           ))
         )}
         {/* Bandas de hierro forjado */}
         {[0.75, 2.6].map((y) => (
-          <mesh key={y} position={[1.2, y, 0.09]}>
+          <mesh key={y} position={[1.2, y, 0.1]}>
             <boxGeometry args={[2.36, 0.2, 0.04]} />
             <meshStandardMaterial color="#26211c" metalness={0.75} roughness={0.5} />
           </mesh>
@@ -233,7 +301,7 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
         {/* Remaches DORADOS de las bandas (como en la referencia) */}
         {[0.75, 2.6].map((y) =>
           [0.25, 0.75, 1.25, 1.75, 2.15].map((x) => (
-            <mesh key={`${y}-${x}`} position={[x, y, 0.115]}>
+            <mesh key={`${y}-${x}`} position={[x, y, 0.125]}>
               <sphereGeometry args={[0.032, 10, 10]} />
               <meshStandardMaterial
                 color="#d8a43c"
