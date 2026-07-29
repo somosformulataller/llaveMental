@@ -199,9 +199,9 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
         envMapIntensity: envInt,
       });
     return {
-      slab: mk('#a08d78', 0.52, 0.25),
-      frame: mk('#e0c8a8', 0.4, 0.45),
-      field: mk('#c9b192', 0.44, 0.35),
+      slab: mk('#8d7a64', 0.52, 0.22),
+      frame: mk('#cdb28c', 0.4, 0.4),
+      field: mk('#b39a77', 0.44, 0.3),
     };
   }, [woodTex, envMap]);
 
