@@ -61,9 +61,10 @@ export default function MedievalScene({
       <color attach="background" args={['#0e0a07']} />
       <fog attach="fog" args={['#0e0a07', 8.5, 17]} />
 
-      <ambientLight intensity={0.6} color="#ffe0b3" />
+      <ambientLight intensity={0.55} color="#ffe0b3" />
       <hemisphereLight intensity={0.35} color="#ffe8c4" groundColor="#3a2c1a" />
-      <directionalLight position={[3, 5, 6]} intensity={0.8} color="#c8d2ea" />
+      {/* Luz de relleno cálida (la referencia no tiene luz fría) */}
+      <directionalLight position={[3, 5, 6]} intensity={0.5} color="#e8dcc2" />
       {/* Foco cálido sobre la puerta y la cerradura */}
       <spotLight
         position={[0, 4.5, 4.5]}

@@ -18,17 +18,17 @@ interface Key3DProps {
   onKeyClick: (id: number) => void;
 }
 
-const GOLD = new THREE.Color('#d9a733');
-const GOLD_EMISSIVE = new THREE.Color('#8a6512');
+const GOLD = new THREE.Color('#e8b23a');
+const GOLD_EMISSIVE = new THREE.Color('#9a7212');
 const BROKEN_COLOR = new THREE.Color('#4a423a');
 const CORRECT_EMISSIVE = new THREE.Color('#ffb833');
 
 const goldProps = {
-  color: '#d9a733',
+  color: '#e8b23a',
   metalness: 0.85,
-  roughness: 0.35,
-  emissive: '#8a6512',
-  emissiveIntensity: 0.15,
+  roughness: 0.32,
+  emissive: '#9a7212',
+  emissiveIntensity: 0.22,
   transparent: true,
 } as const;
 
@@ -124,7 +124,7 @@ export default function Key3D({ id, status, base, size, hidden, interactive, onK
         m.color.lerp(GOLD, k);
         m.emissive.lerp(GOLD_EMISSIVE, k);
         m.emissiveIntensity = THREE.MathUtils.damp(
-          m.emissiveIntensity, hovered && clickable ? 0.8 : 0.15, 8, delta
+          m.emissiveIntensity, hovered && clickable ? 0.8 : 0.22, 8, delta
         );
         m.opacity = THREE.MathUtils.damp(m.opacity, 1, 8, delta);
       }
