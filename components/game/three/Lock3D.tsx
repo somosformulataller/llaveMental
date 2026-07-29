@@ -8,38 +8,77 @@ import { LOCK_LOCAL_POS } from './constants';
 
 interface Lock3DProps {
   status: LockStatus;
+  /** Mapa de entorno para los reflejos del oro (opcional) */
+  envMap?: THREE.Texture;
 }
 
 const RED_FLASH = new THREE.Color('#ff2e3f');
 const GOLD_GLOW = new THREE.Color('#ffb84d');
 
-// Cerradura DORADA ornamentada (diseño de referencia): placa con
-// moldura, ornamentos en las esquinas y un gran ojo oscuro. Montada
-// en posición local dentro del grupo de la puerta, para girar con
-// ella al abrirse. SHAKE → vibra y destella rojo. OPEN → brilla.
-export default function Lock3D({ status }: Lock3DProps) {
+// Placa con esquinas redondeadas (para extruir con bisel)
+function roundedRectShape(w: number, h: number, r: number): THREE.Shape {
+  const s = new THREE.Shape();
+  const x = -w / 2;
+  const y = -h / 2;
+  s.moveTo(x + r, y);
+  s.lineTo(x + w - r, y);
+  s.quadraticCurveTo(x + w, y, x + w, y + r);
+  s.lineTo(x + w, y + h - r);
+  s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  s.lineTo(x + r, y + h);
+  s.quadraticCurveTo(x, y + h, x, y + h - r);
+  s.lineTo(x, y + r);
+  s.quadraticCurveTo(x, y, x + r, y);
+  s.closePath();
+  return s;
+}
+
+// Cerradura DORADA ornamentada (diseño de referencia): placa
+// redondeada con bisel real, molduras, filigrana y un gran ojo
+// oscuro. Montada en posición local dentro del grupo de la puerta,
+// para girar con ella. SHAKE → vibra y destella rojo. OPEN → brilla.
+export default function Lock3D({ status, envMap }: Lock3DProps) {
   const groupRef = useRef<THREE.Group>(null);
   const glowMatRef = useRef<THREE.MeshBasicMaterial>(null);
 
-  // Un material para el cuerpo y otro para las molduras: compartidos
-  // entre las piezas para que toda la cerradura destelle junta.
-  const goldMat = useMemo(
+  // Placa extruida con esquinas redondeadas y bisel (atrapa la luz
+  // en los bordes, como el metal batido de la imagen)
+  const plateGeo = useMemo(
     () =>
-      new THREE.MeshStandardMaterial({
-        color: '#c8942f',
-        metalness: 0.92,
-        roughness: 0.3,
+      new THREE.ExtrudeGeometry(roundedRectShape(0.62, 0.84, 0.07), {
+        depth: 0.028,
+        bevelEnabled: true,
+        bevelThickness: 0.012,
+        bevelSize: 0.012,
+        bevelSegments: 2,
       }),
     []
   );
+
+  // Un material para el cuerpo y otro para las molduras: compartidos
+  // entre las piezas para que toda la cerradura destelle junta.
+  // Físicos y con mapa de entorno: el oro refleja de verdad.
+  const goldMat = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color: '#c8942f',
+        metalness: 1,
+        roughness: 0.26,
+        envMap: envMap ?? null,
+        envMapIntensity: 1.15,
+      }),
+    [envMap]
+  );
   const trimMat = useMemo(
     () =>
-      new THREE.MeshStandardMaterial({
+      new THREE.MeshPhysicalMaterial({
         color: '#e6bd57',
-        metalness: 0.95,
-        roughness: 0.25,
+        metalness: 1,
+        roughness: 0.2,
+        envMap: envMap ?? null,
+        envMapIntensity: 1.25,
       }),
-    []
+    [envMap]
   );
 
   useFrame((state, delta) => {
@@ -77,10 +116,8 @@ export default function Lock3D({ status }: Lock3DProps) {
 
   return (
     <group ref={groupRef} position={LOCK_LOCAL_POS}>
-      {/* Placa principal dorada */}
-      <mesh material={goldMat}>
-        <boxGeometry args={[0.62, 0.84, 0.05]} />
-      </mesh>
+      {/* Placa principal dorada (redondeada y biselada) */}
+      <mesh material={goldMat} geometry={plateGeo} position={[0, 0, -0.012]} />
       {/* Moldura del borde (marco claro que atrapa la luz) */}
       <mesh material={trimMat} position={[0, 0.395, 0.03]}>
         <boxGeometry args={[0.62, 0.05, 0.03]} />

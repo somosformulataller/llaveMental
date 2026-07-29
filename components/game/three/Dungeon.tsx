@@ -1,58 +1,115 @@
 'use client';
 
 import { useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Instances, Instance } from '@react-three/drei';
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { LockStatus } from '@/types/game';
 import Torch from './Torch';
 import Lock3D from './Lock3D';
 import Treasure from './Treasure';
 import { DOOR_HINGE_X, seededRand } from './constants';
 
+// Mapa de entorno (generado por código, sin descargas): da reflejos
+// reales al oro de la cerradura y el brillo de barniz a la madera.
+// Se aplica SOLO a los materiales de la puerta/cerradura para no
+// aclarar la penumbra del resto de la mazmorra.
+function useEnvMap(): THREE.Texture {
+  const gl = useThree((s) => s.gl);
+  return useMemo(() => {
+    const pmrem = new THREE.PMREMGenerator(gl);
+    const tex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
+    return tex;
+  }, [gl]);
+}
+
 // Textura de madera pulida generada por código: vetas verticales con
-// ligera ondulación, nudos sutiles y variación de tono. Se usa como
-// mapa de color Y de relieve (bump) en la puerta y sus paneles.
+// ligera ondulación, nudos, bandas de brillo de barniz y variación de
+// tono. Se usa como mapa de color Y de relieve (bump) en la puerta.
 function useWoodTexture(): THREE.CanvasTexture {
   return useMemo(() => {
     const c = document.createElement('canvas');
-    c.width = 256;
-    c.height = 512;
+    c.width = 512;
+    c.height = 1024;
     const ctx = c.getContext('2d')!;
-    const base = ctx.createLinearGradient(0, 0, 256, 0);
+    const base = ctx.createLinearGradient(0, 0, 512, 0);
     base.addColorStop(0, '#4a2a11');
-    base.addColorStop(0.5, '#5a341b');
+    base.addColorStop(0.5, '#5c351b');
     base.addColorStop(1, '#472810');
     ctx.fillStyle = base;
-    ctx.fillRect(0, 0, 256, 512);
+    ctx.fillRect(0, 0, 512, 1024);
     // Vetas verticales (deterministas: sin Math.random en render)
-    for (let i = 0; i < 90; i++) {
-      const x = seededRand(i * 3 + 1) * 256;
-      const w = 0.6 + seededRand(i * 3 + 2) * 2.2;
+    for (let i = 0; i < 160; i++) {
+      const x = seededRand(i * 3 + 1) * 512;
+      const w = 0.7 + seededRand(i * 3 + 2) * 3;
       const light = seededRand(i * 3 + 3) > 0.5;
-      ctx.strokeStyle = light ? 'rgba(128,78,34,0.26)' : 'rgba(24,12,4,0.3)';
+      ctx.strokeStyle = light ? 'rgba(132,80,34,0.24)' : 'rgba(22,11,4,0.3)';
       ctx.lineWidth = w;
-      const wob = (seededRand(i * 7 + 5) - 0.5) * 20;
+      const wob = (seededRand(i * 7 + 5) - 0.5) * 36;
       ctx.beginPath();
       ctx.moveTo(x, -10);
-      ctx.bezierCurveTo(x + wob, 128, x - wob, 384, x + wob * 0.5, 522);
+      ctx.bezierCurveTo(x + wob, 256, x - wob, 768, x + wob * 0.5, 1034);
       ctx.stroke();
     }
-    // Nudos sutiles
-    for (let i = 0; i < 5; i++) {
-      const nx = seededRand(i * 11 + 40) * 256;
-      const ny = seededRand(i * 11 + 41) * 512;
-      const g = ctx.createRadialGradient(nx, ny, 1, nx, ny, 13);
-      g.addColorStop(0, 'rgba(28,14,5,0.45)');
-      g.addColorStop(1, 'rgba(28,14,5,0)');
+    // Bandas anchas de brillo (el barniz atrapa la luz por franjas)
+    for (let i = 0; i < 7; i++) {
+      const x = seededRand(i * 13 + 70) * 512;
+      const w = 26 + seededRand(i * 13 + 71) * 50;
+      const g = ctx.createLinearGradient(x - w, 0, x + w, 0);
+      g.addColorStop(0, 'rgba(255,206,140,0)');
+      g.addColorStop(0.5, 'rgba(255,206,140,0.07)');
+      g.addColorStop(1, 'rgba(255,206,140,0)');
       ctx.fillStyle = g;
-      ctx.fillRect(nx - 13, ny - 13, 26, 26);
+      ctx.fillRect(x - w, 0, w * 2, 1024);
+    }
+    // Nudos sutiles
+    for (let i = 0; i < 7; i++) {
+      const nx = seededRand(i * 11 + 40) * 512;
+      const ny = seededRand(i * 11 + 41) * 1024;
+      const g = ctx.createRadialGradient(nx, ny, 2, nx, ny, 22);
+      g.addColorStop(0, 'rgba(26,13,5,0.5)');
+      g.addColorStop(0.55, 'rgba(60,32,12,0.2)');
+      g.addColorStop(1, 'rgba(26,13,5,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(nx - 22, ny - 22, 44, 44);
     }
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.anisotropy = 8;
     return tex;
   }, []);
+}
+
+// Forma anular (marco de moldura) con hueco central
+function ringShape(w: number, h: number, t: number): THREE.Shape {
+  const s = new THREE.Shape();
+  s.moveTo(-w / 2, -h / 2);
+  s.lineTo(w / 2, -h / 2);
+  s.lineTo(w / 2, h / 2);
+  s.lineTo(-w / 2, h / 2);
+  s.closePath();
+  const iw = w / 2 - t;
+  const ih = h / 2 - t;
+  const hole = new THREE.Path();
+  hole.moveTo(-iw, -ih);
+  hole.lineTo(-iw, ih);
+  hole.lineTo(iw, ih);
+  hole.lineTo(iw, -ih);
+  hole.closePath();
+  s.holes.push(hole);
+  return s;
+}
+
+function rectShape(w: number, h: number): THREE.Shape {
+  const s = new THREE.Shape();
+  s.moveTo(-w / 2, -h / 2);
+  s.lineTo(w / 2, -h / 2);
+  s.lineTo(w / 2, h / 2);
+  s.lineTo(-w / 2, h / 2);
+  s.closePath();
+  return s;
 }
 
 // Textura de resplandor (degradado radial cálido) generada por código:
@@ -123,27 +180,81 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
   const bricks = useBricks();
   const glowTex = useGlowTexture();
   const woodTex = useWoodTexture();
+  const envMap = useEnvMap();
   const doorRef = useRef<THREE.Group>(null);
 
-  // Materiales de madera compartidos: la MISMA veta con distinto tono
-  // por nivel del relieve (el multiplicador de color solo oscurece,
-  // así el marco queda claro y la garganta en sombra).
+  // Madera BARNIZADA (material físico con clearcoat + reflejos del
+  // entorno): la misma veta con distinto tono por nivel del relieve.
   const doorMats = useMemo(() => {
-    const mk = (tint: string, roughness: number) =>
-      new THREE.MeshStandardMaterial({
+    const mk = (tint: string, roughness: number, envInt: number) =>
+      new THREE.MeshPhysicalMaterial({
         map: woodTex,
         bumpMap: woodTex,
         bumpScale: 0.02,
         color: tint,
         roughness,
+        clearcoat: 0.55,
+        clearcoatRoughness: 0.28,
+        envMap,
+        envMapIntensity: envInt,
       });
     return {
-      slab: mk('#b9a892', 0.52),
-      frame: mk('#f5e2c8', 0.42),
-      groove: mk('#5e5044', 0.6),
-      field: mk('#e2ccb0', 0.45),
+      slab: mk('#b9a892', 0.52, 0.3),
+      frame: mk('#f5e2c8', 0.4, 0.5),
+      field: mk('#e2ccb0', 0.44, 0.4),
     };
-  }, [woodTex]);
+  }, [woodTex, envMap]);
+
+  // Molduras con BISEL real (geometría extruida, no cajas): el marco
+  // es un anillo biselado y el campo central un panel realzado; entre
+  // ambos queda la garganta en sombra sobre la propia hoja.
+  const panelGeos = useMemo(() => {
+    const frame = new THREE.ExtrudeGeometry(ringShape(0.92, 0.98, 0.13), {
+      depth: 0.016,
+      bevelEnabled: true,
+      bevelThickness: 0.016,
+      bevelSize: 0.014,
+      bevelSegments: 2,
+    });
+    const field = new THREE.ExtrudeGeometry(rectShape(0.5, 0.56), {
+      depth: 0.018,
+      bevelEnabled: true,
+      bevelThickness: 0.03,
+      bevelSize: 0.05,
+      bevelSegments: 3,
+    });
+    return { frame, field };
+  }, []);
+
+  // Herrajes con reflejos (bandas, remaches, argolla)
+  const metalMats = useMemo(
+    () => ({
+      band: new THREE.MeshPhysicalMaterial({
+        color: '#2a241e',
+        metalness: 0.85,
+        roughness: 0.42,
+        envMap,
+        envMapIntensity: 0.7,
+      }),
+      rivet: new THREE.MeshPhysicalMaterial({
+        color: '#d8a43c',
+        metalness: 1,
+        roughness: 0.24,
+        emissive: '#5c400c',
+        emissiveIntensity: 0.2,
+        envMap,
+        envMapIntensity: 1.1,
+      }),
+      bronze: new THREE.MeshPhysicalMaterial({
+        color: '#8a6a2a',
+        metalness: 1,
+        roughness: 0.3,
+        envMap,
+        envMapIntensity: 0.9,
+      }),
+    }),
+    [envMap]
+  );
   const treasureLight = useRef<THREE.PointLight>(null);
   const openTimer = useRef(0);
   const open = lockStatus === 'OPEN';
@@ -273,57 +384,40 @@ export default function Dungeon({ lockStatus, treasureVariant }: DungeonProps) {
           <boxGeometry args={[0.035, 3.44, 0.012]} />
           <meshStandardMaterial color="#1c0f06" roughness={0.85} />
         </mesh>
-        {/* Paneles tallados: moldura en tres niveles como la referencia
-            (marco claro que atrapa la luz → garganta en sombra →
-            campo central que sobresale) */}
+        {/* Paneles tallados con bisel real: marco de moldura biselado,
+            garganta en sombra (la hoja se ve entre ambos) y campo
+            central realzado con su propio bisel */}
         {PANEL_COLS.map((x) =>
           PANEL_ROWS.map((y) => (
             <group key={`${x}-${y}`} position={[x, y, 0]}>
-              <mesh material={doorMats.frame} position={[0, 0, 0.045]}>
-                <boxGeometry args={[0.92, 0.98, 0.03]} />
-              </mesh>
-              <mesh material={doorMats.groove} position={[0, 0, 0.052]}>
-                <boxGeometry args={[0.76, 0.82, 0.028]} />
-              </mesh>
-              <mesh material={doorMats.field} position={[0, 0, 0.062]}>
-                <boxGeometry args={[0.58, 0.64, 0.034]} />
-              </mesh>
+              <mesh material={doorMats.frame} geometry={panelGeos.frame} position={[0, 0, 0.042]} />
+              <mesh material={doorMats.field} geometry={panelGeos.field} position={[0, 0, 0.042]} />
             </group>
           ))
         )}
         {/* Bandas de hierro forjado */}
         {[0.75, 2.6].map((y) => (
-          <mesh key={y} position={[1.2, y, 0.1]}>
+          <mesh key={y} material={metalMats.band} position={[1.2, y, 0.1]}>
             <boxGeometry args={[2.36, 0.2, 0.04]} />
-            <meshStandardMaterial color="#26211c" metalness={0.75} roughness={0.5} />
           </mesh>
         ))}
         {/* Remaches DORADOS de las bandas (como en la referencia) */}
         {[0.75, 2.6].map((y) =>
           [0.25, 0.75, 1.25, 1.75, 2.15].map((x) => (
-            <mesh key={`${y}-${x}`} position={[x, y, 0.125]}>
+            <mesh key={`${y}-${x}`} material={metalMats.rivet} position={[x, y, 0.125]}>
               <sphereGeometry args={[0.032, 10, 10]} />
-              <meshStandardMaterial
-                color="#d8a43c"
-                metalness={0.95}
-                roughness={0.3}
-                emissive="#5c400c"
-                emissiveIntensity={0.25}
-              />
             </mesh>
           ))
         )}
         {/* Argolla colgando debajo de la cerradura */}
-        <mesh position={[1.75, 1.52, 0.11]}>
+        <mesh material={metalMats.bronze} position={[1.75, 1.52, 0.11]}>
           <boxGeometry args={[0.1, 0.05, 0.03]} />
-          <meshStandardMaterial color="#8a6a2a" metalness={0.9} roughness={0.35} />
         </mesh>
-        <mesh position={[1.75, 1.42, 0.12]} rotation={[0.35, 0, 0]}>
+        <mesh material={metalMats.bronze} position={[1.75, 1.42, 0.12]} rotation={[0.35, 0, 0]}>
           <torusGeometry args={[0.1, 0.02, 10, 24]} />
-          <meshStandardMaterial color="#8a6a2a" metalness={0.9} roughness={0.35} />
         </mesh>
         {/* Cerradura (gira con la puerta) */}
-        <Lock3D status={lockStatus} />
+        <Lock3D status={lockStatus} envMap={envMap} />
       </group>
 
       {/* Antorchas */}
