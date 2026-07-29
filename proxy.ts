@@ -39,7 +39,8 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/game') ||
     request.nextUrl.pathname.startsWith('/admin') ||
     request.nextUrl.pathname.startsWith('/billetera') ||
-    request.nextUrl.pathname.startsWith('/ranking');
+    request.nextUrl.pathname.startsWith('/ranking') ||
+    request.nextUrl.pathname.startsWith('/comprar');
   if (!user && protectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';

@@ -57,6 +57,7 @@ export default function Header() {
       ]
     : [
         { label: '👛 Canjear o retirar', path: '/billetera' },
+        { label: '🎟️ Comprar más tickets', path: '/comprar' },
         { label: '🏆 Ranking', path: '/ranking' },
         { label: '🔑 Jugar', path: '/game' },
       ];
