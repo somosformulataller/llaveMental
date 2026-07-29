@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePlayer } from '@/components/providers/PlayerProvider';
 import { ChatMessage, ChatQuickQuestion } from '@/types/chat';
@@ -11,12 +10,11 @@ import AudioRecorder from './AudioRecorder';
 const MAX_SIZE = 5 * 1024 * 1024;
 
 // Chat de atención al cliente (lado JUGADOR): burbuja flotante 💬 con
-// contador de no leídos. Aparece en todas las pantallas menos en la de
-// juego, y solo con sesión iniciada. Sin mensajes automáticos: todo lo
-// escribe una persona. Se actualiza por sondeo (5 s abierto / 30 s cerrado).
+// contador de no leídos. Aparece en TODAS las pantallas del jugador
+// (incluido el juego), solo con sesión iniciada. Sin mensajes
+// automáticos. Se actualiza por sondeo (5 s abierto / 30 s cerrado).
 export default function ChatWidget() {
   const { player, isAdmin } = usePlayer();
-  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [quick, setQuick] = useState<ChatQuickQuestion[]>([]);
@@ -62,8 +60,7 @@ export default function ChatWidget() {
     if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [open, msgCount]);
 
-  // En la pantalla de juego no se muestra (no tapa la escena 3D)
-  if (!player || isAdmin || pathname?.startsWith('/game')) return null;
+  if (!player || isAdmin) return null;
 
   const send = async (body: {
     text?: string;
