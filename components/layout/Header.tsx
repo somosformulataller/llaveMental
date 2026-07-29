@@ -74,7 +74,9 @@ export default function Header() {
               aria-expanded={menuOpen}
               aria-haspopup="menu"
             >
-              <span className="header-select-label">Canjear o retirar</span>
+              <span className="header-select-label">
+                {isAdmin ? '👑 Menú' : '🎟️ Comprar más tickets'}
+              </span>
               <span className={`menu-caret ${menuOpen ? 'menu-caret-open' : ''}`}>▾</span>
             </button>
             <AnimatePresence>
