@@ -46,6 +46,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const supabaseRef = useRef(createClient());
 
   const refresh = useCallback(async () => {
+    // Marcar la carga TAMBIÉN en los refrescos (p. ej. justo después
+    // de iniciar sesión): si no, hay un instante con player=null y
+    // isLoading=false y las pantallas creen que no hay sesión
+    // (aparecía "Iniciar sesión para jugar" ya estando logueado).
+    setIsLoading(true);
     try {
       const res = await fetch('/api/player', { cache: 'no-store' });
       const data = await res.json();
