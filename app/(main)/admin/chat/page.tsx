@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import { usePlayer } from '@/components/providers/PlayerProvider';
 import {
   AdminChatListItem,
@@ -112,7 +113,7 @@ export default function AdminChatPage() {
     } catch {}
   }, []);
 
-  // Sondeo en vivo: lista + hilo abierto cada 5 s
+  // Sondeo de respaldo: lista + hilo abierto cada 10 s
   useEffect(() => {
     if (!isAdmin) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- carga asíncrona
@@ -120,8 +121,29 @@ export default function AdminChatPage() {
     const interval = setInterval(() => {
       loadList();
       if (selectedRef.current) loadThread(selectedRef.current);
-    }, 5_000);
+    }, 10_000);
     return () => clearInterval(interval);
+  }, [isAdmin, loadList, loadThread]);
+
+  // TIEMPO REAL: cualquier mensaje nuevo refresca la lista y el hilo
+  // abierto al instante (RLS: el admin recibe todos). Migración 007.
+  useEffect(() => {
+    if (!isAdmin) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel('chat-rt-admin')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        () => {
+          loadList();
+          if (selectedRef.current) loadThread(selectedRef.current);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [isAdmin, loadList, loadThread]);
 
   const msgCount = messages.length;

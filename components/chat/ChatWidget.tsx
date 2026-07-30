@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { createClient } from '@/lib/supabase/client';
 import { usePlayer } from '@/components/providers/PlayerProvider';
 import { ChatMessage, ChatQuickQuestion } from '@/types/chat';
 import ChatAttachment from './ChatAttachment';
@@ -45,14 +46,34 @@ export default function ChatWidget() {
     } catch {}
   }, []);
 
-  // Sondeo: cerrado revisa no leídos cada 30 s; abierto refresca cada 5 s
+  // Sondeo de RESPALDO: cerrado revisa cada 30 s; abierto cada 10 s
   useEffect(() => {
     if (!player || isAdmin) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- carga asíncrona inicial
     load(open);
-    const interval = setInterval(() => load(openRef.current), open ? 5_000 : 30_000);
+    const interval = setInterval(() => load(openRef.current), open ? 10_000 : 30_000);
     return () => clearInterval(interval);
   }, [player, isAdmin, open, load]);
+
+  // TIEMPO REAL: cuando soporte escribe, el mensaje (y la burbuja
+  // con el contador) llegan al instante. RLS filtra: el jugador solo
+  // recibe eventos de SU conversación. Requiere la migración 007.
+  const playerId = player?.id ?? null;
+  useEffect(() => {
+    if (!playerId || isAdmin) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`chat-rt-${playerId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        () => load(openRef.current)
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [playerId, isAdmin, load]);
 
   // Autoscroll al final cuando llegan mensajes
   const msgCount = messages.length;
