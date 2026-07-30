@@ -44,21 +44,42 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const supabaseRef = useRef(createClient());
+  // Secuencia de refrescos: solo la respuesta MÁS RECIENTE aplica.
+  // Sin esto, un refresco viejo (p. ej. el de "sin sesión" de la
+  // pantalla de login) podía llegar tarde y pisar con null el perfil
+  // recién cargado tras iniciar sesión.
+  const reqSeq = useRef(0);
 
   const refresh = useCallback(async () => {
-    // Marcar la carga TAMBIÉN en los refrescos (p. ej. justo después
-    // de iniciar sesión): si no, hay un instante con player=null y
-    // isLoading=false y las pantallas creen que no hay sesión
-    // (aparecía "Iniciar sesión para jugar" ya estando logueado).
+    const seq = ++reqSeq.current;
+    // Marcar la carga TAMBIÉN en los refrescos: sin esto había un
+    // instante con player=null e isLoading=false y las pantallas
+    // creían que no había sesión.
     setIsLoading(true);
     try {
       const res = await fetch('/api/player', { cache: 'no-store' });
       const data = await res.json();
+      if (seq !== reqSeq.current) return; // llegó tarde: descartar
+
+      if (!data.player) {
+        // El navegador dice que HAY sesión pero el servidor aún no la
+        // vio (cookies recién escritas): reintentar una vez.
+        const { data: s } = await supabaseRef.current.auth.getSession();
+        if (s.session) {
+          await new Promise((r) => setTimeout(r, 600));
+          if (seq !== reqSeq.current) return;
+          const res2 = await fetch('/api/player', { cache: 'no-store' });
+          const data2 = await res2.json();
+          if (seq !== reqSeq.current) return;
+          setPlayer(data2.player ?? null);
+          return;
+        }
+      }
       setPlayer(data.player ?? null);
     } catch {
-      setPlayer(null);
+      if (seq === reqSeq.current) setPlayer(null);
     } finally {
-      setIsLoading(false);
+      if (seq === reqSeq.current) setIsLoading(false);
     }
   }, []);
 

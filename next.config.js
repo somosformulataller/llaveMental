@@ -41,8 +41,10 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      // Never cache API routes — must always be fresh (server-authoritative RNG)
-      urlPattern: /^\/api\/.*/i,
+      // Never cache API routes — must always be fresh (server-authoritative RNG).
+      // OJO: workbox prueba el patrón contra la URL COMPLETA (https://…),
+      // así que el patrón anclado /^\/api\// jamás coincidía.
+      urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/api/'),
       handler: 'NetworkOnly',
     },
   ],
