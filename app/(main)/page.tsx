@@ -20,8 +20,8 @@ export default function HomePage() {
             Correcta
           </h1>
           <p className="hero-subtitle">
-            10 llaves. 1 cerradura. Un pozo de <strong>$10</strong> esperándote.
-            ¿Puedes encontrar la llave correcta antes de que el pozo llegue a cero?
+            10 llaves. 1 cerradura. Un premio de <strong>$10</strong> esperándote.
+            ¿Puedes encontrar la llave correcta antes de que el premio llegue a cero?
           </p>
         </div>
 
@@ -80,7 +80,7 @@ export default function HomePage() {
             <span className="step-number">Paso 3</span>
             <p className="step-title">¡Cobra tu Premio!</p>
             <p className="step-desc">
-              Cuando encuentres la llave correcta, el pozo restante es tuyo:
+              Cuando encuentres la llave correcta, el premio restante es tuyo:
               retíralo por Pago Móvil o cámbialo por más tickets.
             </p>
           </div>

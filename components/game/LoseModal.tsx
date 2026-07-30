@@ -30,7 +30,7 @@ export default function LoseModal({ onPlayAgain }: LoseModalProps) {
 
         <h2 className="modal-title lose-title">Ninguna llave funcionó</h2>
         <p className="modal-subtitle">
-          El pozo se agotó. ¡Suerte la próxima vez!
+          El premio se agotó. ¡Suerte la próxima vez!
         </p>
 
         <div className="modal-payout">
