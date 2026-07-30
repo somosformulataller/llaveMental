@@ -42,23 +42,30 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-            // El trigger de la base de datos copia estos datos al perfil
-            data: {
-              first_name: firstName.trim(),
-              last_name: lastName.trim(),
-              whatsapp: whatsapp.trim(),
-              cedula: cedula.trim(),
-              accepted_terms: 'true',
-            },
-          },
+        // El servidor crea la cuenta YA CONFIRMADA (sin verificar el
+        // correo) y aquí se inicia sesión de inmediato.
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            password,
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            whatsapp: whatsapp.trim(),
+            cedula: cedula.trim(),
+            accepted: acceptTerms,
+          }),
         });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || 'No se pudo crear la cuenta');
+          return;
+        }
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        setSuccess('¡Revisa tu email para confirmar tu cuenta!');
+        router.push('/game');
+        router.refresh();
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
