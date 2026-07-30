@@ -5,6 +5,13 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import GameScene from '@/components/game/GameScene';
+import { TOTAL_KEYS } from '@/lib/game/constants';
+import { KeyStatus } from '@/types/game';
+
+// Escena del juego de fondo (solo decorativa): crea la expectativa
+// de lo que hay detrás del login. Las llaves flotan pero no se tocan.
+const IDLE_KEYS: KeyStatus[] = Array(TOTAL_KEYS).fill('IDLE');
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -91,6 +98,18 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
+      {/* La mazmorra de fondo, con velo oscuro para leer el formulario */}
+      <div className="auth-bg" aria-hidden>
+        <GameScene
+          lockStatus="IDLE"
+          keyStatuses={IDLE_KEYS}
+          interactive={false}
+          treasureVariant={0}
+          onKeyClick={() => {}}
+        />
+        <div className="auth-bg-veil" />
+      </div>
+
       <motion.div
         className="auth-card"
         initial={{ opacity: 0, y: 30 }}
