@@ -24,6 +24,8 @@ export default function GameBoard() {
   const [lockStatus, setLockStatus] = useState<LockStatus>('IDLE');
   // Aviso flotante (no bloqueante) con el premio ganado
   const [winBanner, setWinBanner] = useState<number | null>(null);
+  // Mensaje "¡Fantástico!" sobre el tesoro mientras se ve la sala
+  const [treasurePrize, setTreasurePrize] = useState<number | null>(null);
   const [isDecreasing, setIsDecreasing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -241,15 +243,17 @@ export default function GameBoard() {
         setLockStatus('OPEN');
         setVault(data.payout);
 
-        setTimeout(() => {
-          if (player) updateBalance(player.balance + data.payout);
-        }, 1200);
-
         // Secuencia cinemática: la llave gira (~1s), la puerta se abre
-        // y la cámara avanza al tesoro. SIN modal: se muestra un aviso
-        // flotante con el premio y la escena se reinicia sola para
-        // seguir jugando (con tickets, la siguiente arranca al instante).
-        setTimeout(() => setWinBanner(data.payout), 5200);
+        // y la cámara avanza al tesoro. Sobre el tesoro aparece el
+        // "¡Fantástico!" con el premio; luego el aviso de que ya está
+        // en el saldo (y el contador del header suma en ese momento).
+        // La escena se reinicia sola para seguir jugando.
+        setTimeout(() => setTreasurePrize(data.payout), 1800);
+        setTimeout(() => {
+          setTreasurePrize(null);
+          setWinBanner(data.payout);
+          if (player) updateBalance(player.balance + data.payout);
+        }, 5200);
         setTimeout(() => handlePlayAgain(), 7000);
         setTimeout(() => setWinBanner(null), 11_000);
       }
@@ -271,6 +275,7 @@ export default function GameBoard() {
     setVault(INITIAL_VAULT);
     setKeyStatuses(Array(TOTAL_KEYS).fill('IDLE'));
     setLockStatus('IDLE');
+    setTreasurePrize(null);
     setError(null);
     refresh();
   };
@@ -299,6 +304,24 @@ export default function GameBoard() {
         treasureVariant={treasureVariant}
         onKeyClick={handleKeyClick}
       />
+
+      {/* Mensaje sobre el tesoro al abrirse la puerta */}
+      <AnimatePresence>
+        {treasurePrize !== null && (
+          <motion.div
+            className="treasure-msg"
+            initial={{ opacity: 0, y: 24, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.55, ease: 'easeOut' }}
+          >
+            <p className="treasure-msg-title">✨ ¡Fantástico! ✨</p>
+            <p className="treasure-msg-sub">
+              Has ganado un premio de <strong>${treasurePrize.toFixed(2)}</strong>
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* UI superpuesta — arriba: el premio */}
       <div className="game-overlay game-overlay-top">

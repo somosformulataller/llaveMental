@@ -122,7 +122,17 @@ export default function Header() {
               </Link>
               <Link href="/billetera" className="wallet-badge" prefetch>
                 <span className="wallet-icon">💰</span>
-                <span className="wallet-amount">${player.balance.toFixed(2)}</span>
+                {/* Al cambiar el saldo (p. ej. al ganar) se ve la suma:
+                    pulso verde que vuelve al dorado */}
+                <motion.span
+                  key={player.balance}
+                  className="wallet-amount"
+                  initial={{ scale: 1.45, color: '#00ff87' }}
+                  animate={{ scale: 1, color: '#f5c518' }}
+                  transition={{ duration: 0.9, ease: 'easeOut' }}
+                >
+                  ${player.balance.toFixed(2)}
+                </motion.span>
               </Link>
             </div>
           )}
