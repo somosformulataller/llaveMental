@@ -41,7 +41,8 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/billetera') ||
     request.nextUrl.pathname.startsWith('/ranking') ||
     request.nextUrl.pathname.startsWith('/comprar');
-  if (!user && protectedRoute) {
+  // Ya no hay landing: sin sesión, la raíz también va al login
+  if (!user && (protectedRoute || request.nextUrl.pathname === '/')) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
     return NextResponse.redirect(url);

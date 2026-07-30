@@ -97,11 +97,6 @@ export default function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        {/* Back link */}
-        <Link href="/" className="auth-back">
-          ← Volver al inicio
-        </Link>
-
         {/* Header */}
         <div className="auth-header">
           <div className="auth-logo">🗝️</div>
