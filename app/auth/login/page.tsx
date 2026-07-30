@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import GameScene from '@/components/game/GameScene';
+import KeyLogo from '@/components/ui/KeyLogo';
 import { TOTAL_KEYS } from '@/lib/game/constants';
 import { KeyStatus } from '@/types/game';
 
@@ -118,7 +119,9 @@ export default function LoginPage() {
       >
         {/* Header */}
         <div className="auth-header">
-          <div className="auth-logo">🔑</div>
+          <div className="auth-logo">
+            <KeyLogo />
+          </div>
           <h1 className="auth-title">
             {isSignUp ? 'Crear cuenta' : 'Iniciar sesión'}
           </h1>
