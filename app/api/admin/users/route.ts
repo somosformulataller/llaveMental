@@ -27,6 +27,8 @@ interface PlayerRow {
   payout_cedula: string | null;
   created_at: string;
   blocked?: boolean;
+  whatsapp?: string | null;
+  cedula?: string | null;
 }
 
 // Mapa id → email de auth (players no guarda el correo)
@@ -53,6 +55,8 @@ function toUserRow(p: PlayerRow, email: string | null) {
     total_wagered: Number(p.total_wagered),
     total_won: Number(p.total_won),
     created_at: p.created_at,
+    whatsapp: p.whatsapp ?? null,
+    cedula: p.cedula ?? p.payout_cedula ?? null,
   };
 }
 

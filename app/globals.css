@@ -2105,6 +2105,70 @@ select.ref-input { appearance: auto; }
 .pdetail-tr > td { padding: 6px 8px 12px; }
 .achat-detail { padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); }
 
+/* ── Registro: campos en pareja y aceptación de términos ── */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 420px) {
+  .form-row { grid-template-columns: 1fr; }
+}
+.form-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin: 4px 0;
+}
+.form-check input {
+  margin-top: 3px;
+  accent-color: var(--gold-1);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* ── Términos y condiciones ── */
+.terms-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-lg) var(--space-md);
+}
+.terms-card {
+  width: 100%;
+  max-width: 720px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+}
+.terms-title {
+  color: var(--gold-1);
+  font-size: 1.5rem;
+  margin-top: 10px;
+}
+.terms-updated {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 4px 0 var(--space-md);
+}
+.terms-card section { margin-bottom: var(--space-md); }
+.terms-card h2 {
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.terms-card p, .terms-card li {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.terms-card ul { padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+
 .badge-blocked {
   font-size: 0.64rem;
   font-weight: 700;

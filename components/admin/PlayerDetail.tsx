@@ -127,6 +127,14 @@ export default function PlayerDetail({
           <strong>{info.email ?? '—'}</strong>
         </div>
         <div className="pdetail-item">
+          <span>WhatsApp</span>
+          <strong>{info.whatsapp ?? '—'}</strong>
+        </div>
+        <div className="pdetail-item">
+          <span>Cédula</span>
+          <strong>{info.cedula ?? '—'}</strong>
+        </div>
+        <div className="pdetail-item">
           <span>Estado</span>
           <strong>
             {info.blocked ? <span className="badge-blocked">Bloqueado</span> : 'Activo'}

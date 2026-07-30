@@ -9,6 +9,12 @@ import { motion } from 'framer-motion';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [cedula, setCedula] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,10 +25,21 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
     setSuccess(null);
 
+    if (isSignUp) {
+      if (password !== confirm) {
+        setError('Las contraseñas no coinciden.');
+        return;
+      }
+      if (!acceptTerms) {
+        setError('Debes aceptar los términos y condiciones para registrarte.');
+        return;
+      }
+    }
+
+    setLoading(true);
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
@@ -30,6 +47,14 @@ export default function LoginPage() {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
+            // El trigger de la base de datos copia estos datos al perfil
+            data: {
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
+              whatsapp: whatsapp.trim(),
+              cedula: cedula.trim(),
+              accepted_terms: 'true',
+            },
           },
         });
         if (error) throw error;
@@ -78,18 +103,53 @@ export default function LoginPage() {
           </h1>
           <p className="auth-subtitle">
             {isSignUp
-              ? 'Obtén $100 en créditos demo al registrarte'
+              ? 'Compra tickets por Pago Móvil y gana premios reales'
               : 'Bienvenido de vuelta, jugador'}
           </p>
         </div>
 
-        {/* Email / Password form */}
+        {/* Form */}
         <form className="auth-form" onSubmit={handleSubmit}>
           {error && <div className="auth-error">⚠️ {error}</div>}
           {success && <div className="auth-success">✓ {success}</div>}
 
+          {isSignUp && (
+            <>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="firstName">Nombre</label>
+                  <input
+                    id="firstName"
+                    type="text"
+                    className="form-input"
+                    placeholder="Tu nombre"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    maxLength={60}
+                    autoComplete="given-name"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="lastName">Apellido</label>
+                  <input
+                    id="lastName"
+                    type="text"
+                    className="form-input"
+                    placeholder="Tu apellido"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    maxLength={60}
+                    autoComplete="family-name"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
           <div className="form-group">
-            <label className="form-label" htmlFor="email">Email</label>
+            <label className="form-label" htmlFor="email">Correo</label>
             <input
               id="email"
               type="email"
@@ -101,6 +161,40 @@ export default function LoginPage() {
               autoComplete="email"
             />
           </div>
+
+          {isSignUp && (
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label" htmlFor="whatsapp">WhatsApp</label>
+                <input
+                  id="whatsapp"
+                  type="tel"
+                  className="form-input"
+                  placeholder="04121234567"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value.replace(/[^\d+]/g, ''))}
+                  required
+                  minLength={7}
+                  maxLength={15}
+                  autoComplete="tel"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="cedula">Cédula</label>
+                <input
+                  id="cedula"
+                  type="text"
+                  className="form-input"
+                  placeholder="V12345678"
+                  value={cedula}
+                  onChange={(e) => setCedula(e.target.value)}
+                  required
+                  minLength={5}
+                  maxLength={15}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label" htmlFor="password">Contraseña</label>
@@ -117,6 +211,40 @@ export default function LoginPage() {
             />
           </div>
 
+          {isSignUp && (
+            <>
+              <div className="form-group">
+                <label className="form-label" htmlFor="confirm">Confirmar contraseña</label>
+                <input
+                  id="confirm"
+                  type="password"
+                  className="form-input"
+                  placeholder="Repite tu contraseña"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                  minLength={6}
+                />
+              </div>
+
+              <label className="form-check">
+                <input
+                  type="checkbox"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  required
+                />
+                <span>
+                  Acepto los{' '}
+                  <Link href="/terminos" target="_blank" className="admin-link">
+                    términos y condiciones
+                  </Link>
+                </span>
+              </label>
+            </>
+          )}
+
           <button
             type="submit"
             className="btn-submit"
@@ -125,7 +253,7 @@ export default function LoginPage() {
             {loading
               ? 'Cargando...'
               : isSignUp
-              ? '🎰 Crear cuenta y jugar'
+              ? '🗝️ Crear cuenta y jugar'
               : '🔑 Entrar a jugar'}
           </button>
         </form>
@@ -137,7 +265,7 @@ export default function LoginPage() {
             href="#"
             onClick={(e) => { e.preventDefault(); setIsSignUp(!isSignUp); setError(null); setSuccess(null); }}
           >
-            {isSignUp ? 'Inicia sesión' : 'Regístrate gratis'}
+            {isSignUp ? 'Inicia sesión' : 'Regístrate'}
           </a>
         </p>
       </motion.div>

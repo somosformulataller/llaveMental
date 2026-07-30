@@ -184,6 +184,8 @@ export interface AdminUserRow {
   total_wagered: number;
   total_won: number;
   created_at: string;
+  whatsapp?: string | null;
+  cedula?: string | null;
 }
 
 export interface AdminHistoryRow {
