@@ -54,8 +54,10 @@ export default function MedievalScene({
 }: MedievalSceneProps) {
   return (
     <Canvas
-      dpr={[1, 2]}
-      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      // dpr máximo 1.5: en pantallas retina, renderizar a 2x costaba
+      // ~el doble de GPU sin diferencia visible en esta escena
+      dpr={[1, 1.5]}
+      gl={{ antialias: true, powerPreference: 'high-performance', stencil: false }}
       camera={{ position: [0, 1.6, 6.2], fov: 42 }}
     >
       <color attach="background" args={['#0e0a07']} />

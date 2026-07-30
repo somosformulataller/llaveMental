@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'La Llave Correcta',
-    description: '¿Puedes abrir la cerradura y ganar el pozo?',
+    description: '¿Puedes abrir la cerradura y ganar el premio?',
     type: 'website',
   },
 };

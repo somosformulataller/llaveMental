@@ -42,6 +42,9 @@ export default function Key3D({ id, status, base, size, hidden, interactive, onK
   const pos = useRef<THREE.Vector3 | null>(null);
   const velY = useRef(0);
   const turnTimer = useRef(0);
+  // Materiales cacheados: recorrer el árbol en cada frame (x10 llaves
+  // x60 fps) era el mayor costo de CPU de la escena
+  const matsRef = useRef<THREE.MeshStandardMaterial[] | null>(null);
   const [hovered, setHovered] = useState(false);
 
   const clickable = interactive && status === 'IDLE';
@@ -83,15 +86,20 @@ export default function Key3D({ id, status, base, size, hidden, interactive, onK
     const k = 1 - Math.exp(-7 * delta);
 
     // Materiales dorados de las piezas de la llave (la caja de colisión
-    // usa meshBasicMaterial y se excluye del filtro).
-    const mats: THREE.MeshStandardMaterial[] = [];
-    inner.traverse((child) => {
-      const mesh = child as THREE.Mesh;
-      if (mesh.isMesh) {
-        const m = mesh.material as THREE.MeshStandardMaterial;
-        if (m.isMeshStandardMaterial) mats.push(m);
-      }
-    });
+    // usa meshBasicMaterial y se excluye del filtro). Se recolectan UNA
+    // sola vez: la geometría de la llave nunca cambia.
+    if (!matsRef.current) {
+      const collected: THREE.MeshStandardMaterial[] = [];
+      inner.traverse((child) => {
+        const mesh = child as THREE.Mesh;
+        if (mesh.isMesh) {
+          const m = mesh.material as THREE.MeshStandardMaterial;
+          if (m.isMeshStandardMaterial) collected.push(m);
+        }
+      });
+      matsRef.current = collected;
+    }
+    const mats = matsRef.current;
 
     // Puerta abierta: desvanecer la llave para despejar la vista del tesoro
     if (hidden) {

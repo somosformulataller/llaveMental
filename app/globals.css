@@ -1,7 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap');
-
 /* ============================================
    DESIGN SYSTEM — LA LLAVE CORRECTA
+   (fuentes autoalojadas vía next/font en app/layout.tsx —
+   sin @import externo, que bloqueaba el primer pintado)
    ============================================ */
 
 :root {
@@ -29,9 +29,9 @@
   --text-secondary: #9ca3b8;
   --text-muted:     #6b7499;
 
-  /* Typography */
-  --font-ui:      'Inter', system-ui, sans-serif;
-  --font-display: 'Rajdhani', 'Inter', sans-serif;
+  /* Typography (variables inyectadas por next/font) */
+  --font-ui:      var(--font-inter, 'Inter'), system-ui, sans-serif;
+  --font-display: var(--font-rajdhani, 'Rajdhani'), system-ui, sans-serif;
 
   /* Spacing */
   --space-xs:  4px;

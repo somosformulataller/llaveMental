@@ -87,16 +87,22 @@ export default function Lock3D({ status, envMap }: Lock3DProps) {
     [envMap]
   );
 
+  // Pares (material, color base) fijos: sin asignaciones por frame
+  const matPairs = useMemo<[THREE.MeshPhysicalMaterial, THREE.Color][]>(
+    () => [
+      [goldMat, GOLD_BASE],
+      [trimMat, TRIM_BASE],
+    ],
+    [goldMat, trimMat]
+  );
+
   useFrame((state, delta) => {
     const g = groupRef.current;
     const glow = glowMatRef.current;
     if (!g || !glow) return;
     const t = state.clock.elapsedTime;
     const k = 1 - Math.exp(-14 * delta);
-    const mats: [THREE.MeshPhysicalMaterial, THREE.Color][] = [
-      [goldMat, GOLD_BASE],
-      [trimMat, TRIM_BASE],
-    ];
+    const mats = matPairs;
 
     if (status === 'SHAKE') {
       // TODA la cerradura se pone roja: color base + emisivo fuerte +
