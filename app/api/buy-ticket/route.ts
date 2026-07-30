@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
+import { BLOCKED_MESSAGE, isBlocked } from '@/lib/supabase/blocked';
 import { drawPayoutTier } from '@/lib/game/rng';
 import { INITIAL_VAULT } from '@/lib/game/constants';
 
@@ -46,6 +47,11 @@ export async function POST() {
         { error: 'La cuenta de administrador no puede jugar. Usa una cuenta de jugador.' },
         { status: 403 }
       );
+    }
+
+    // Jugador bloqueado por el admin: no puede jugar
+    if (await isBlocked(supabase, user.id)) {
+      return NextResponse.json({ error: BLOCKED_MESSAGE }, { status: 403 });
     }
 
     // 3. ¿Ya hay una partida activa? Se reanuda con su estado COMPLETO

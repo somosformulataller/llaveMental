@@ -11,6 +11,8 @@ import {
 } from '@/types/chat';
 import ChatAttachment from '@/components/chat/ChatAttachment';
 import AudioRecorder from '@/components/chat/AudioRecorder';
+import AdminNav from '@/components/admin/AdminNav';
+import PlayerChip from '@/components/admin/PlayerChip';
 
 const MAX_SIZE = 5 * 1024 * 1024;
 
@@ -150,6 +152,33 @@ export default function AdminChatPage() {
     return () => clearTimeout(t);
   }, [search, searchOpen]);
 
+  // Llegada desde el menú de un jugador (/admin/chat?player=ID):
+  // crea o abre su conversación directamente.
+  useEffect(() => {
+    if (!isAdmin) return;
+    const pid = new URLSearchParams(window.location.search).get('player');
+    if (!pid) return;
+    window.history.replaceState(null, '', '/admin/chat');
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'start', player_id: pid }),
+        });
+        const data = await res.json();
+        if (res.ok && data.conversation_id) {
+          selectedRef.current = data.conversation_id;
+          setSelected(data.conversation_id);
+          setThread(null);
+          setMessages([]);
+          loadThread(data.conversation_id);
+          loadList();
+        }
+      } catch {}
+    })();
+  }, [isAdmin, loadThread, loadList]);
+
   if (!isAdmin) return null;
 
   const openConversation = (id: string) => {
@@ -251,31 +280,6 @@ export default function AdminChatPage() {
     }
   };
 
-  const adjustTickets = async (sign: 1 | -1) => {
-    if (!thread) return;
-    const raw = prompt(
-      `¿Cuántos tickets quieres ${sign === 1 ? 'RECARGAR a' : 'RESTAR a'} ${thread.username || 'este jugador'}?`
-    );
-    if (!raw) return;
-    const qty = Math.trunc(Number(raw));
-    if (!Number.isFinite(qty) || qty <= 0) {
-      alert('Escribe una cantidad válida');
-      return;
-    }
-    try {
-      const res = await fetch('/api/admin/tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player_id: thread.player_id, delta: qty * sign }),
-      });
-      const data = await res.json();
-      if (!res.ok) alert(data.error || 'No se pudo actualizar');
-      else setThread((prev) => (prev ? { ...prev, tickets: data.tickets } : prev));
-    } catch {
-      alert('Error de conexión');
-    }
-  };
-
   const addQuestion = async () => {
     const q = newQuestion.trim();
     if (!q) return;
@@ -294,11 +298,12 @@ export default function AdminChatPage() {
   return (
     <main className="admin-main">
       <h1 className="admin-title">💬 Chat de atención al cliente</h1>
-      <p className="admin-subtitle">
-        Conversaciones uno a uno con los jugadores ·{' '}
-        <a href="/admin" className="admin-link">← Volver al panel</a>
-      </p>
+      <p className="admin-subtitle">Conversaciones uno a uno con los jugadores</p>
 
+      <div className="admin-shell">
+        <AdminNav active="chat" />
+
+        <div className="admin-content">
       <div className="admin-filter-row">
         <button
           className={`btn-mini ${tab === 'convos' ? 'btn-mini-active' : ''}`}
@@ -480,7 +485,15 @@ export default function AdminChatPage() {
                     ← Volver
                   </button>
                   <div className="achat-thread-who">
-                    <strong>{thread?.username || '…'}</strong>
+                    {thread ? (
+                      <PlayerChip
+                        playerId={thread.player_id}
+                        username={thread.username}
+                        onChanged={() => loadThread(thread.id)}
+                      />
+                    ) : (
+                      <strong>…</strong>
+                    )}
                     {thread?.email && <span>{thread.email}</span>}
                     <span>🎟️ {thread?.tickets ?? 0}</span>
                   </div>
@@ -495,12 +508,6 @@ export default function AdminChatPage() {
                         {STATUS_LABEL[s]}
                       </button>
                     ))}
-                    <button className="btn-mini" onClick={() => adjustTickets(1)}>
-                      ＋ Tickets
-                    </button>
-                    <button className="btn-mini" onClick={() => adjustTickets(-1)}>
-                      − Tickets
-                    </button>
                   </div>
                 </div>
 
@@ -577,6 +584,8 @@ export default function AdminChatPage() {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </main>
   );
 }

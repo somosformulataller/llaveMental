@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { BLOCKED_MESSAGE, isBlocked } from '@/lib/supabase/blocked';
 import { TICKET_PRICE_USD } from '@/lib/payments/constants';
 
 interface RedeemBody {
@@ -16,6 +17,10 @@ export async function POST(req: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
+    if (await isBlocked(supabase, user.id)) {
+      return NextResponse.json({ error: BLOCKED_MESSAGE }, { status: 403 });
+    }
 
     const body: RedeemBody = await req.json();
     let qty: number;

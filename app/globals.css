@@ -2000,6 +2000,116 @@ select.ref-input { appearance: auto; }
   .wallet-grid { grid-template-columns: 1fr; }
 }
 
+/* ── Panel admin: menú lateral + acciones de jugador ── */
+.admin-shell {
+  display: flex;
+  gap: var(--space-md);
+  align-items: flex-start;
+}
+.admin-side {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 172px;
+  position: sticky;
+  top: 76px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px;
+}
+.admin-side-item {
+  text-align: left;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.admin-side-item:hover { color: var(--gold-1); }
+.admin-side-active {
+  color: var(--gold-1);
+  border-color: var(--border-gold);
+  background: rgba(245, 197, 24, 0.08);
+  font-weight: 600;
+}
+.admin-content { flex: 1; min-width: 0; }
+
+@media (max-width: 800px) {
+  .admin-shell { flex-direction: column; }
+  .admin-side {
+    position: static;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+  }
+  .admin-side-item { white-space: nowrap; padding: 7px 10px; }
+}
+
+/* Chip de jugador con menú de acciones */
+.pchip {
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  color: var(--text-primary);
+  padding: 3px 10px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pchip:hover { border-color: var(--gold-1); color: var(--gold-1); }
+.pchip-caret { font-size: 0.65rem; color: var(--text-muted); }
+
+.pchip-pop {
+  position: fixed;
+  z-index: 600;
+  width: 260px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pchip-loading { font-size: 0.8rem; color: var(--text-muted); }
+.pchip-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.pchip-line { font-size: 0.74rem; color: var(--text-secondary); word-break: break-word; }
+.pchip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.badge-blocked {
+  font-size: 0.64rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 71, 87, 0.18);
+  color: var(--red-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.users-search {
+  max-width: 340px;
+  margin-bottom: var(--space-md);
+}
+
 /* Aviso flotante al ganar (no bloquea: se sigue jugando) */
 .win-banner {
   pointer-events: none;

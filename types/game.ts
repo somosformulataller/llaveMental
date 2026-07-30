@@ -172,6 +172,20 @@ export interface AdminPlayerRow {
   created_at: string;
 }
 
+// Fila de la sección Usuarios del panel admin (con email y bloqueo)
+export interface AdminUserRow {
+  id: string;
+  username: string | null;
+  email: string | null;
+  role: PlayerRole | null;
+  blocked: boolean;
+  balance: number;
+  tickets: number;
+  total_wagered: number;
+  total_won: number;
+  created_at: string;
+}
+
 export interface AdminHistoryRow {
   id: string;
   player_id: string;

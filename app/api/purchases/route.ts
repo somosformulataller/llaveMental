@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
+import { BLOCKED_MESSAGE, isBlocked } from '@/lib/supabase/blocked';
 import { fetchExchangeRateSafe } from '@/lib/payments/exchangeRate';
 import { tryAutoValidatePurchase } from '@/lib/payments/validatePurchase';
 import {
@@ -67,6 +68,11 @@ export async function POST(req: NextRequest) {
         { error: 'Escribe el número de referencia del pago' },
         { status: 400 }
       );
+    }
+
+    // Jugador bloqueado: no puede comprar tickets
+    if (await isBlocked(supabase, user.id)) {
+      return NextResponse.json({ error: BLOCKED_MESSAGE }, { status: 403 });
     }
 
     const rate = await fetchExchangeRateSafe();
