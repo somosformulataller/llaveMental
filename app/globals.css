@@ -2064,35 +2064,46 @@ select.ref-input { appearance: auto; }
   white-space: nowrap;
 }
 .pchip:hover { border-color: var(--gold-1); color: var(--gold-1); }
+.pchip-open { border-color: var(--gold-1); color: var(--gold-1); background: rgba(245,197,24,0.08); }
 .pchip-caret { font-size: 0.65rem; color: var(--text-muted); }
 
-.pchip-pop {
-  position: fixed;
-  z-index: 600;
-  width: 260px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-gold);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  padding: 12px;
+/* Ficha del jugador desplegada DEBAJO de su fila (acordeón, sin
+   modal): grilla adaptable y acciones con wrap — nada desborda el
+   ancho disponible. */
+.pdetail {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(245, 197, 24, 0.04);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  max-width: 100%;
 }
-.pchip-loading { font-size: 0.8rem; color: var(--text-muted); }
-.pchip-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
+.pdetail-loading { font-size: 0.8rem; color: var(--text-muted); }
+.pdetail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px 14px;
 }
-.pchip-line { font-size: 0.74rem; color: var(--text-secondary); word-break: break-word; }
-.pchip-actions {
+.pdetail-item { font-size: 0.72rem; color: var(--text-muted); min-width: 0; }
+.pdetail-item span { display: block; text-transform: uppercase; letter-spacing: 0.04em; }
+.pdetail-item strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pdetail-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 4px;
 }
+.pdetail-tr > td { padding: 6px 8px 12px; }
+.achat-detail { padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); }
 
 .badge-blocked {
   font-size: 0.64rem;

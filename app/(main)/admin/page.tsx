@@ -13,7 +13,7 @@ import {
 } from '@/types/game';
 import { PURCHASE_STATUS_LABEL } from '@/lib/payments/constants';
 import AdminNav, { AdminSection } from '@/components/admin/AdminNav';
-import PlayerChip from '@/components/admin/PlayerChip';
+import PlayerDetail from '@/components/admin/PlayerDetail';
 
 const fmt = (n: number) => `$${Number(n).toFixed(2)}`;
 const fmtDate = (iso: string | null) =>
@@ -52,6 +52,11 @@ export default function AdminPage() {
   const [purchaseFilter, setPurchaseFilter] = useState<'pendientes' | 'todas'>('pendientes');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [openDetail, setOpenDetail] = useState<{
+    key: string;
+    playerId: string;
+    username: string | null;
+  } | null>(null);
 
   // Solo admins: los demás vuelven al inicio (la API y RLS también protegen)
   useEffect(() => {
@@ -185,6 +190,40 @@ export default function AdminPage() {
 
   if (!isAdmin) return null;
 
+  // Detalle del jugador expandido DEBAJO de su fila (tipo acordeón,
+  // sin modal). La clave es única por fila para no abrir duplicados.
+  const playerBtn = (key: string, playerId: string, username: string | null) => {
+    const isOpen = openDetail?.key === key;
+    return (
+      <button
+        className={`pchip ${isOpen ? 'pchip-open' : ''}`}
+        onClick={() =>
+          setOpenDetail(isOpen ? null : { key, playerId, username })
+        }
+      >
+        {username || playerId.slice(0, 8)}{' '}
+        <span className="pchip-caret">{isOpen ? '▴' : '▾'}</span>
+      </button>
+    );
+  };
+
+  const detailRow = (key: string, colSpan: number) =>
+    openDetail?.key === key ? (
+      <tr className="pdetail-tr">
+        <td colSpan={colSpan}>
+          <PlayerDetail
+            playerId={openDetail.playerId}
+            username={openDetail.username}
+            onChanged={loadAll}
+            onDeleted={() => {
+              setOpenDetail(null);
+              loadAll();
+            }}
+          />
+        </td>
+      </tr>
+    ) : null;
+
   const stats = data?.stats;
   const visiblePurchases =
     purchaseFilter === 'pendientes'
@@ -310,34 +349,37 @@ export default function AdminPage() {
                     {visibleUsers.map((u) => {
                       const houseTake = Number(u.total_wagered) - Number(u.total_won);
                       return (
-                        <tr key={u.id}>
-                          <td>
-                            {u.role === 'admin' ? (
-                              <>👑 {u.username || u.id.slice(0, 8)}</>
-                            ) : (
-                              <PlayerChip playerId={u.id} username={u.username} onChanged={loadAll} />
-                            )}
-                          </td>
-                          <td>{u.email ?? '—'}</td>
-                          <td>
-                            {u.role === 'admin' ? (
-                              'admin'
-                            ) : u.blocked ? (
-                              <span className="badge-blocked">Bloqueado</span>
-                            ) : (
-                              'activo'
-                            )}
-                          </td>
-                          <td>{fmt(u.balance)}</td>
-                          <td>{u.tickets}</td>
-                          <td>{fmt(u.total_wagered)}</td>
-                          <td>{fmt(u.total_won)}</td>
-                          <td className={houseTake >= 0 ? 'admin-win' : 'admin-lose'}>
-                            {houseTake >= 0 ? '+' : '−'}
-                            {fmt(Math.abs(houseTake))}
-                          </td>
-                          <td>{fmtDate(u.created_at)}</td>
-                        </tr>
+                        <Fragment key={u.id}>
+                          <tr>
+                            <td>
+                              {u.role === 'admin' ? (
+                                <>👑 {u.username || u.id.slice(0, 8)}</>
+                              ) : (
+                                playerBtn(u.id, u.id, u.username)
+                              )}
+                            </td>
+                            <td>{u.email ?? '—'}</td>
+                            <td>
+                              {u.role === 'admin' ? (
+                                'admin'
+                              ) : u.blocked ? (
+                                <span className="badge-blocked">Bloqueado</span>
+                              ) : (
+                                'activo'
+                              )}
+                            </td>
+                            <td>{fmt(u.balance)}</td>
+                            <td>{u.tickets}</td>
+                            <td>{fmt(u.total_wagered)}</td>
+                            <td>{fmt(u.total_won)}</td>
+                            <td className={houseTake >= 0 ? 'admin-win' : 'admin-lose'}>
+                              {houseTake >= 0 ? '+' : '−'}
+                              {fmt(Math.abs(houseTake))}
+                            </td>
+                            <td>{fmtDate(u.created_at)}</td>
+                          </tr>
+                          {detailRow(u.id, 9)}
+                        </Fragment>
                       );
                     })}
                     {visibleUsers.length === 0 && (
@@ -388,11 +430,10 @@ export default function AdminPage() {
                     </thead>
                     <tbody>
                       {visiblePurchases.map((p) => (
-                        <tr key={p.id}>
+                        <Fragment key={p.id}>
+                        <tr>
                           <td>{fmtDate(p.created_at)}</td>
-                          <td>
-                            <PlayerChip playerId={p.player_id} username={p.username} onChanged={loadAll} />
-                          </td>
+                          <td>{playerBtn(p.id, p.player_id, p.username)}</td>
                           <td>{p.reference}</td>
                           <td>
                             {fmt(Number(p.amount_usd))}
@@ -427,6 +468,8 @@ export default function AdminPage() {
                             )}
                           </td>
                         </tr>
+                        {detailRow(p.id, 7)}
+                        </Fragment>
                       ))}
                       {visiblePurchases.length === 0 && (
                         <tr>
@@ -457,11 +500,10 @@ export default function AdminPage() {
                     </thead>
                     <tbody>
                       {[...pendingWithdrawals, ...otherWithdrawals].map((w) => (
-                        <tr key={w.id}>
+                        <Fragment key={w.id}>
+                        <tr>
                           <td>{fmtDate(w.created_at)}</td>
-                          <td>
-                            <PlayerChip playerId={w.player_id} username={w.username} onChanged={loadAll} />
-                          </td>
+                          <td>{playerBtn(w.id, w.player_id, w.username)}</td>
                           <td>{fmt(Number(w.amount_usd))}</td>
                           <td>
                             {w.payout_name || w.payout_phone ? (
@@ -503,6 +545,8 @@ export default function AdminPage() {
                             )}
                           </td>
                         </tr>
+                        {detailRow(w.id, 6)}
+                        </Fragment>
                       ))}
                       {withdrawals.length === 0 && (
                         <tr>
@@ -550,7 +594,7 @@ export default function AdminPage() {
                             >
                               {flowPlayer === p.id ? '▼' : '▶'}
                             </button>{' '}
-                            <PlayerChip playerId={p.id} username={p.username} onChanged={loadAll} />
+                            {playerBtn(`i-${p.id}`, p.id, p.username)}
                           </td>
                           <td>{p.logins + p.app_opens}</td>
                           <td>{p.page_views}</td>
@@ -561,6 +605,7 @@ export default function AdminPage() {
                           <td>{fmt(Number(p.total_won))}</td>
                           <td>{fmtDate(p.last_seen)}</td>
                         </tr>
+                        {detailRow(`i-${p.id}`, 9)}
                         {flowPlayer === p.id && (
                           <tr>
                             <td colSpan={9}>
@@ -614,20 +659,21 @@ export default function AdminPage() {
                       // paga en premio queda para la casa (y al revés).
                       const houseTake = 2 - Number(g.payout);
                       return (
-                        <tr key={g.id}>
-                          <td>{fmtDate(g.created_at)}</td>
-                          <td>
-                            <PlayerChip playerId={g.player_id} username={g.username} onChanged={loadAll} />
-                          </td>
-                          <td>{g.keys_tried_count}</td>
-                          <td className={Number(g.payout) > 0 ? 'admin-win' : 'admin-lose'}>
-                            {fmt(Number(g.payout))}
-                          </td>
-                          <td className={houseTake >= 0 ? 'admin-win' : 'admin-lose'}>
-                            {houseTake >= 0 ? '+' : '−'}
-                            {fmt(Math.abs(houseTake))}
-                          </td>
-                        </tr>
+                        <Fragment key={g.id}>
+                          <tr>
+                            <td>{fmtDate(g.created_at)}</td>
+                            <td>{playerBtn(g.id, g.player_id, g.username ?? null)}</td>
+                            <td>{g.keys_tried_count}</td>
+                            <td className={Number(g.payout) > 0 ? 'admin-win' : 'admin-lose'}>
+                              {fmt(Number(g.payout))}
+                            </td>
+                            <td className={houseTake >= 0 ? 'admin-win' : 'admin-lose'}>
+                              {houseTake >= 0 ? '+' : '−'}
+                              {fmt(Math.abs(houseTake))}
+                            </td>
+                          </tr>
+                          {detailRow(g.id, 5)}
+                        </Fragment>
                       );
                     })}
                     {data && data.recent_games.length === 0 && (

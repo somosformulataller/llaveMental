@@ -12,7 +12,7 @@ import {
 import ChatAttachment from '@/components/chat/ChatAttachment';
 import AudioRecorder from '@/components/chat/AudioRecorder';
 import AdminNav from '@/components/admin/AdminNav';
-import PlayerChip from '@/components/admin/PlayerChip';
+import PlayerDetail from '@/components/admin/PlayerDetail';
 
 const MAX_SIZE = 5 * 1024 * 1024;
 
@@ -68,6 +68,8 @@ export default function AdminChatPage() {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // Ficha del jugador desplegada bajo el encabezado del hilo
+  const [showDetail, setShowDetail] = useState(false);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -187,6 +189,7 @@ export default function AdminChatPage() {
     setThread(null);
     setMessages([]);
     setNotice(null);
+    setShowDetail(false);
     loadThread(id);
     // Abrirla la marca como leída también en la lista
     setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unread: 0 } : c)));
@@ -486,11 +489,13 @@ export default function AdminChatPage() {
                   </button>
                   <div className="achat-thread-who">
                     {thread ? (
-                      <PlayerChip
-                        playerId={thread.player_id}
-                        username={thread.username}
-                        onChanged={() => loadThread(thread.id)}
-                      />
+                      <button
+                        className={`pchip ${showDetail ? 'pchip-open' : ''}`}
+                        onClick={() => setShowDetail((v) => !v)}
+                      >
+                        {thread.username || thread.player_id.slice(0, 8)}{' '}
+                        <span className="pchip-caret">{showDetail ? '▴' : '▾'}</span>
+                      </button>
                     ) : (
                       <strong>…</strong>
                     )}
@@ -510,6 +515,22 @@ export default function AdminChatPage() {
                     ))}
                   </div>
                 </div>
+
+                {showDetail && thread && (
+                  <div className="achat-detail">
+                    <PlayerDetail
+                      playerId={thread.player_id}
+                      username={thread.username}
+                      onChanged={() => loadThread(thread.id)}
+                      onDeleted={() => {
+                        setShowDetail(false);
+                        setSelected(null);
+                        setThread(null);
+                        loadList();
+                      }}
+                    />
+                  </div>
+                )}
 
                 <div className="chat-msgs achat-msgs">
                   {messages.map((m) => (
