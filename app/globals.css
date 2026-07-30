@@ -774,6 +774,9 @@ h1, h2, h3 {
 .auth-logo {
   font-size: 3rem;
   margin-bottom: var(--space-sm);
+  /* Llave DORADA con brillo (el emoji 🗝️ se veía negro) */
+  filter: sepia(1) saturate(3) hue-rotate(-8deg) brightness(1.15)
+    drop-shadow(0 0 14px rgba(245, 197, 24, 0.45));
 }
 
 .auth-title {

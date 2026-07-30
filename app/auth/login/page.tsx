@@ -118,7 +118,7 @@ export default function LoginPage() {
       >
         {/* Header */}
         <div className="auth-header">
-          <div className="auth-logo">🗝️</div>
+          <div className="auth-logo">🔑</div>
           <h1 className="auth-title">
             {isSignUp ? 'Crear cuenta' : 'Iniciar sesión'}
           </h1>
