@@ -113,16 +113,19 @@ export default function Header() {
             </AnimatePresence>
           </div>
 
-          <div className="header-badges">
-            <Link href="/billetera" className="wallet-badge" prefetch>
-              <span className="wallet-icon">🎟️</span>
-              <span className="wallet-amount">{player.tickets ?? 0}</span>
-            </Link>
-            <Link href="/billetera" className="wallet-badge" prefetch>
-              <span className="wallet-icon">💰</span>
-              <span className="wallet-amount">${player.balance.toFixed(2)}</span>
-            </Link>
-          </div>
+          {/* El admin no juega: sin contadores de tickets ni saldo */}
+          {!isAdmin && (
+            <div className="header-badges">
+              <Link href="/billetera" className="wallet-badge" prefetch>
+                <span className="wallet-icon">🎟️</span>
+                <span className="wallet-amount">{player.tickets ?? 0}</span>
+              </Link>
+              <Link href="/billetera" className="wallet-badge" prefetch>
+                <span className="wallet-icon">💰</span>
+                <span className="wallet-amount">${player.balance.toFixed(2)}</span>
+              </Link>
+            </div>
+          )}
 
           <NotificationsBell />
         </div>

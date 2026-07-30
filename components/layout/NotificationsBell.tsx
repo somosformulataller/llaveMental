@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { createClient } from '@/lib/supabase/client';
 import { usePlayer } from '@/components/providers/PlayerProvider';
 
 interface NotificationItem {
@@ -19,11 +20,12 @@ function timeAgo(iso: string): string {
   return `hace ${Math.floor(s / 86400)} d`;
 }
 
-// Campanita del header: notificaciones del estado de las compras de
-// tickets y retiros. Se actualiza sola cada 60 s; el contador marca
-// las no leídas (última lectura guardada por jugador en el equipo).
+// Campanita del header. Jugador: estado de sus compras y retiros.
+// Admin: TODO lo de la app (chat, compras, retiros, registros) con
+// refresco más frecuente y tiempo real para el chat. El contador
+// marca las no leídas (última lectura guardada en el equipo).
 export default function NotificationsBell() {
-  const { player } = usePlayer();
+  const { player, isAdmin } = usePlayer();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [open, setOpen] = useState(false);
   const [lastSeen, setLastSeen] = useState<string | null>(null);
@@ -48,14 +50,32 @@ export default function NotificationsBell() {
     } catch {}
   }, []);
 
-  // Cargar al entrar y refrescar cada 60 s
+  // Cargar al entrar y refrescar solo (admin más seguido)
   useEffect(() => {
     if (!player) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-    const interval = setInterval(load, 60_000);
+    const interval = setInterval(load, isAdmin ? 20_000 : 60_000);
     return () => clearInterval(interval);
-  }, [player, load]);
+  }, [player, isAdmin, load]);
+
+  // Admin: los mensajes del chat encienden la campana AL INSTANTE
+  // (Supabase Realtime sobre chat_messages, migración 007)
+  useEffect(() => {
+    if (!player || !isAdmin) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel('bell-rt-admin')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        () => load()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [player, isAdmin, load]);
 
   // Cerrar al tocar fuera o con Escape
   useEffect(() => {
@@ -121,8 +141,9 @@ export default function NotificationsBell() {
             <p className="notif-title">🔔 Notificaciones</p>
             {items.length === 0 ? (
               <p className="notif-empty">
-                Sin notificaciones todavía. Aquí verás el estado de tus compras de tickets y
-                retiros.
+                {isAdmin
+                  ? 'Sin novedades todavía. Aquí verás mensajes del chat, compras, retiros y registros nuevos.'
+                  : 'Sin notificaciones todavía. Aquí verás el estado de tus compras de tickets y retiros.'}
               </p>
             ) : (
               items.map((n) => (
