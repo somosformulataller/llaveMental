@@ -17,21 +17,24 @@ async function requireAdmin() {
 }
 
 // Transacciones (admin): compras de tickets y retiros con los datos
-// del jugador. Lecturas con las políticas RLS de admin.
+// del jugador. Lecturas con la clave de servidor (igual que stats:
+// no depende de que las políticas RLS de admin estén bien en la BD).
 export async function GET() {
   try {
     const { supabase, error } = await requireAdmin();
     if (error) return error;
 
+    const db = isAdminClientConfigured() ? createAdminClient() : supabase;
+
     const [purchasesRes, withdrawalsRes] = await Promise.all([
-      supabase
+      db
         .from('ticket_purchases')
         .select(
           'id, player_id, quantity, amount_usd, amount_ves, exchange_rate_used, reference, status, origin, status_note, created_at, validated_at, players(username)'
         )
         .order('created_at', { ascending: false })
         .limit(100),
-      supabase
+      db
         .from('withdrawals')
         .select(
           'id, player_id, amount_usd, status, reference, admin_note, created_at, paid_at, players(username, payout_name, payout_bank, payout_cedula, payout_phone)'

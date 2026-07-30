@@ -2105,6 +2105,31 @@ select.ref-input { appearance: auto; }
 .pdetail-tr > td { padding: 6px 8px 12px; }
 .achat-detail { padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); }
 
+/* Ícono ℹ️ de las tarjetas de estadística (explica el bloque) */
+.stat-card { position: relative; }
+.stat-info {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  cursor: pointer;
+  opacity: 0.55;
+  padding: 2px;
+  line-height: 1;
+}
+.stat-info:hover { opacity: 1; }
+.stat-help {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  text-align: left;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 6px;
+}
+
 /* ── Registro: campos en pareja y aceptación de términos ── */
 .form-row {
   display: grid;

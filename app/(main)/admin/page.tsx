@@ -37,6 +37,35 @@ const EVENT_LABEL: Record<AppEventRow['event_type'], string> = {
 
 type Section = Exclude<AdminSection, 'chat'>;
 
+// Tarjeta de estadística con ícono ℹ️: al tocarlo explica qué mide
+// el bloque en relación con la lógica RTP/RNG del juego.
+function StatCard({
+  value,
+  label,
+  help,
+}: {
+  value: string | number;
+  label: string;
+  help: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="stat-card">
+      <button
+        className="stat-info"
+        onClick={() => setShow((v) => !v)}
+        aria-label={`Qué significa ${label}`}
+        title={help}
+      >
+        ℹ️
+      </button>
+      <div className="stat-value">{value}</div>
+      <div className="stat-label">{label}</div>
+      {show && <p className="stat-help">{help}</p>}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { player, isLoading, isAdmin } = usePlayer();
   const router = useRouter();
@@ -254,68 +283,80 @@ export default function AdminPage() {
           {section === 'resumen' && (
             <>
               <div className="admin-stats-grid">
-                <div className="stat-card">
-                  <div className="stat-value">{stats ? stats.total_players : '—'}</div>
-                  <div className="stat-label">Jugadores</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">{stats ? stats.total_tickets : '—'}</div>
-                  <div className="stat-label">Partidas jugadas</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">{stats ? fmt(stats.total_wagered) : '—'}</div>
-                  <div className="stat-label">Total apostado</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">{stats ? fmt(stats.total_paid) : '—'}</div>
-                  <div className="stat-label">Total en premios</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">
-                    {stats
+                <StatCard
+                  value={stats ? stats.total_players : '—'}
+                  label="Jugadores"
+                  help="Cuentas registradas en la app (incluye al administrador, que no juega)."
+                />
+                <StatCard
+                  value={stats ? stats.total_tickets : '—'}
+                  label="Partidas jugadas"
+                  help="Partidas terminadas. Cada partida consume 1 ticket de $2.00 y su resultado lo decide el RNG del servidor al empezar."
+                />
+                <StatCard
+                  value={stats ? fmt(stats.total_wagered) : '—'}
+                  label="Total apostado"
+                  help="Todo lo apostado por los jugadores: $2.00 por cada partida jugada. Es la base sobre la que se calcula el RTP."
+                />
+                <StatCard
+                  value={stats ? fmt(stats.total_paid) : '—'}
+                  label="Total en premios"
+                  help="Suma de los premios que el RNG ha otorgado (de $0 a $10 por partida), acreditados al saldo de los jugadores."
+                />
+                <StatCard
+                  value={
+                    stats
                       ? stats.rtp_real !== null
                         ? `${(stats.rtp_real * 100).toFixed(1)}%`
                         : 'N/A'
-                      : '—'}
-                  </div>
-                  <div className="stat-label">RTP real</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">{stats ? fmt(stats.house_profit) : '—'}</div>
-                  <div className="stat-label">Ganancia del juego</div>
-                </div>
+                      : '—'
+                  }
+                  label="RTP real"
+                  help="Porcentaje de lo apostado que se ha pagado en premios HASTA AHORA. El RTP teórico es 98%: con pocas partidas fluctúa mucho (puede superar 100%); con volumen converge al 98%."
+                />
+                <StatCard
+                  value={stats ? fmt(stats.house_profit) : '—'}
+                  label="Ganancia del juego"
+                  help="Apostado menos premios: la ganancia de la LÓGICA del juego. A largo plazo tiende al 2% de lo apostado (≈$0.04 por partida); en rachas cortas puede ser negativa."
+                />
               </div>
               <p className="admin-hint">
                 📐 RTP teórico: <strong>98%</strong> — la casa retiene un <strong>2%</strong> de lo
                 apostado (premio esperado $1.96 por ticket de $2.00 ≈ $0.04 de ganancia por
-                partida en promedio). El &quot;RTP real&quot; es lo efectivamente pagado hasta ahora.
+                partida en promedio). Toca el ℹ️ de cada bloque para ver qué mide.
               </p>
 
               <div className="admin-stats-grid">
-                <div className="stat-card">
-                  <div className="stat-value">{stats ? fmt(stats.total_collected) : '—'}</div>
-                  <div className="stat-label">💵 Recaudado (compras)</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">{stats ? fmt(stats.total_withdrawn) : '—'}</div>
-                  <div className="stat-label">💸 Retiros pagados</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">{stats ? fmt(stats.pending_withdrawals) : '—'}</div>
-                  <div className="stat-label">⏳ Retiros por pagar</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">{stats ? fmt(stats.balance_owed) : '—'}</div>
-                  <div className="stat-label">👛 Saldo en billeteras</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">{stats ? stats.tickets_circulating : '—'}</div>
-                  <div className="stat-label">🎟️ Tickets sin jugar</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">{stats ? stats.active_sessions : '—'}</div>
-                  <div className="stat-label">Partidas activas</div>
-                </div>
+                <StatCard
+                  value={stats ? fmt(stats.total_collected) : '—'}
+                  label="💵 Recaudado (compras)"
+                  help="Dinero REAL que entró: compras de tickets aprobadas por Pago Móvil. (Los tickets recargados a mano por el admin no suman aquí.)"
+                />
+                <StatCard
+                  value={stats ? fmt(stats.total_withdrawn) : '—'}
+                  label="💸 Retiros pagados"
+                  help="Dinero real que ya salió: retiros pagados a los jugadores por Pago Móvil."
+                />
+                <StatCard
+                  value={stats ? fmt(stats.pending_withdrawals) : '—'}
+                  label="⏳ Retiros por pagar"
+                  help="Monto que los jugadores solicitaron retirar y aún no has pagado (ya está descontado de sus billeteras)."
+                />
+                <StatCard
+                  value={stats ? fmt(stats.balance_owed) : '—'}
+                  label="👛 Saldo en billeteras"
+                  help="Premios acumulados que los jugadores todavía no canjean ni retiran: es dinero que se les debe."
+                />
+                <StatCard
+                  value={stats ? stats.tickets_circulating : '—'}
+                  label="🎟️ Tickets sin jugar"
+                  help="Tickets comprados o recargados que aún no se han usado. Cada uno equivale a una partida de $2.00 pendiente de jugarse."
+                />
+                <StatCard
+                  value={stats ? stats.active_sessions : '—'}
+                  label="Partidas activas"
+                  help="Partidas a medias en este momento: el jugador puede salir y volver a continuarlas cuando quiera."
+                />
               </div>
             </>
           )}

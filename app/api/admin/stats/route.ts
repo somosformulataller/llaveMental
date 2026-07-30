@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
 
-// Dashboard del administrador. Doble protección:
-// 1) Verificación explícita de role='admin' en este endpoint.
-// 2) Las políticas RLS "…_admin_read" (migración 002) — sin rol admin,
-//    la base de datos no devuelve filas de otros jugadores.
+// Dashboard del administrador. La identidad se verifica con la
+// sesión (role='admin'); las LECTURAS van con la clave de servidor:
+// así los totales suman TODOS los jugadores aunque alguna política
+// RLS de lectura admin falte en la base (pasó en producción y el
+// resumen quedaba en cero).
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -26,30 +28,32 @@ export async function GET() {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
 
+    const db = isAdminClientConfigured() ? createAdminClient() : supabase;
+
     const [playersRes, ticketsRes, activeRes, recentRes, purchasesRes, withdrawalsRes] =
       await Promise.all([
-        supabase
+        db
           .from('players')
           .select('id, username, balance, tickets, total_wagered, total_won, role, created_at')
           .order('created_at', { ascending: false })
           .limit(200),
-        supabase
+        db
           .from('game_history')
           .select('id', { count: 'exact', head: true }),
-        supabase
+        db
           .from('game_sessions')
           .select('id', { count: 'exact', head: true })
           .eq('game_status', 'ACTIVE'),
-        supabase
+        db
           .from('game_history')
           .select('id, player_id, payout, keys_tried_count, created_at, players(username)')
           .order('created_at', { ascending: false })
           .limit(20),
-        supabase
+        db
           .from('ticket_purchases')
           .select('amount_usd')
           .eq('status', 'aprobado'),
-        supabase
+        db
           .from('withdrawals')
           .select('amount_usd, status')
           .in('status', ['pendiente', 'pagado']),
