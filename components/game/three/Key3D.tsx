@@ -5,6 +5,7 @@ import { useFrame, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { KeyStatus } from '@/types/game';
 import { KEYHOLE_TARGET } from './constants';
+import PrizeTag from './PrizeTag';
 
 interface Key3DProps {
   id: number;
@@ -14,6 +15,8 @@ interface Key3DProps {
   size: number;
   /** true cuando la puerta está abierta: la llave se desvanece para no tapar el tesoro */
   hidden: boolean;
+  /** Premio de motivación revelado al final sobre una llave no volteada */
+  reveal?: number | null;
   interactive: boolean;
   onKeyClick: (id: number) => void;
 }
@@ -36,7 +39,7 @@ const goldProps = {
 // (cajas). El estado del juego dirige la animación en useFrame:
 // IDLE flota y se balancea · FLYING vuela al ojo de la cerradura ·
 // CORRECT gira dentro del ojo · BROKEN cae, se oscurece y se desvanece.
-export default function Key3D({ id, status, base, size, hidden, interactive, onKeyClick }: Key3DProps) {
+export default function Key3D({ id, status, base, size, hidden, reveal, interactive, onKeyClick }: Key3DProps) {
   const outerRef = useRef<THREE.Group>(null);
   const innerRef = useRef<THREE.Group>(null);
   const pos = useRef<THREE.Vector3 | null>(null);
@@ -186,6 +189,8 @@ export default function Key3D({ id, status, base, size, hidden, interactive, onK
 
   return (
     <group ref={outerRef} position={base}>
+      {/* Revelación al terminar: qué "escondía" esta llave no volteada */}
+      {reveal != null && status === 'IDLE' && !hidden && <PrizeTag value={reveal} />}
       <group ref={innerRef}>
         {/* Anilla trilobulada (estilo medieval) */}
         <mesh position={[0, 0.3, 0]}>

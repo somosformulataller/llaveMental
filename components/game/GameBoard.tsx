@@ -10,6 +10,32 @@ import { usePlayer } from '@/components/providers/PlayerProvider';
 import { GameStatus, KeyStatus, LockStatus } from '@/types/game';
 import { TOTAL_KEYS, INITIAL_VAULT } from '@/lib/game/constants';
 
+// Premios de motivación tras las llaves NO volteadas, revelados al
+// terminar. Solo visuales y siempre POR DEBAJO del premio real de la
+// partida (creíbles: el jugador "eligió la mejor llave"). Deterministas
+// por sesión para que un re-render no cambie los montos.
+function computeReveals(
+  statuses: KeyStatus[],
+  winningKey: number,
+  payout: number,
+  seed: string
+): (number | null)[] {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  const rand = () => {
+    h = (h * 1103515245 + 12345) & 0x7fffffff;
+    return h / 0x7fffffff;
+  };
+  const max = payout - 0.05;
+  return statuses.map((s, i) => {
+    if (s !== 'IDLE' || i === winningKey || max < 0.05) return null;
+    const frac = Math.pow(rand(), 1.35); // sesgo hacia montos bajos
+    const raw = 0.05 + frac * (max - 0.05);
+    // Pasos de $0.05, nunca por debajo de $0.05 ni alcanzando el premio
+    return Math.min(max, Math.max(0.05, Math.round(raw * 20) / 20));
+  });
+}
+
 export default function GameBoard() {
   const { player, isLoading: playerLoading, updateBalance, updatePlayer, refresh } = usePlayer();
 
@@ -27,6 +53,8 @@ export default function GameBoard() {
   const [treasurePrize, setTreasurePrize] = useState<number | null>(null);
   // Monedas ocultas: adelanto del premio soltado por un fallo
   const [bonusFlash, setBonusFlash] = useState<number | null>(null);
+  // Revelación final: qué "escondían" las llaves no volteadas
+  const [revealMap, setRevealMap] = useState<(number | null)[] | null>(null);
   const [isDecreasing, setIsDecreasing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -255,21 +283,34 @@ export default function GameBoard() {
         setLockStatus('OPEN');
         setVault(data.payout);
 
+        // Revelar qué "escondían" las llaves no volteadas (montos
+        // siempre menores al premio real). La cámara espera mientras
+        // se leen y luego avanza al tesoro. En partidas que usaron
+        // todas las llaves no hay nada que revelar y el ritmo es el
+        // de siempre.
+        const reveals = computeReveals(keyStatuses, keyId, data.payout, sessionId ?? '');
+        const hasReveal = reveals.some((v) => v !== null);
+        const shift = hasReveal ? 2600 : 0;
+        if (hasReveal) {
+          setRevealMap(reveals);
+          setTimeout(() => setRevealMap(null), 3400);
+        }
+
         // Secuencia cinemática: la llave gira (~1s), la puerta se abre
         // y la cámara avanza al tesoro. Sobre el tesoro aparece el
         // "¡Fantástico!" con el premio; luego el aviso de que ya está
         // en el saldo (y el contador del header suma en ese momento).
         // La escena se reinicia sola para seguir jugando.
-        setTimeout(() => setTreasurePrize(data.payout), 1800);
+        setTimeout(() => setTreasurePrize(data.payout), 1800 + shift);
         setTimeout(() => {
           setTreasurePrize(null);
           setWinBanner(data.payout);
           // Sumar solo lo acreditado al abrir: los adelantos ya se
           // sumaron al saldo cuando salieron las monedas.
           if (player) updateBalance(player.balance + (data.credited ?? data.payout));
-        }, 5200);
-        setTimeout(() => handlePlayAgain(), 7000);
-        setTimeout(() => setWinBanner(null), 11_000);
+        }, 5200 + shift);
+        setTimeout(() => handlePlayAgain(), 7000 + shift);
+        setTimeout(() => setWinBanner(null), 11_000 + shift);
       }
     } catch {
       setError('Error de conexión');
@@ -290,6 +331,7 @@ export default function GameBoard() {
     setKeyStatuses(Array(TOTAL_KEYS).fill('IDLE'));
     setLockStatus('IDLE');
     setTreasurePrize(null);
+    setRevealMap(null);
     setError(null);
     refresh();
   };
@@ -314,8 +356,11 @@ export default function GameBoard() {
       <GameScene
         lockStatus={lockStatus}
         keyStatuses={keyStatuses}
-        interactive={isGameActive && !isLoading}
+        // Con la puerta abierta no se puede seguir tocando llaves
+        // (durante la revelación siguen visibles unos segundos)
+        interactive={isGameActive && !isLoading && lockStatus !== 'OPEN'}
         treasureVariant={treasureVariant}
+        revealValues={revealMap}
         onKeyClick={handleKeyClick}
       />
 

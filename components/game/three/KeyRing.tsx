@@ -12,6 +12,8 @@ interface KeyRingProps {
   interactive: boolean;
   /** true cuando la puerta está abierta: las llaves se desvanecen */
   dimmed: boolean;
+  /** Premios de motivación por llave (null = sin revelación) */
+  revealValues?: (number | null)[] | null;
   onKeyClick: (id: number) => void;
 }
 
@@ -32,7 +34,7 @@ const EDGE_MARGIN = 0.6;
 // tamaño se calculan con el ancho VISIBLE a la profundidad de las
 // llaves (no en el origen): así todas entran siempre en pantalla,
 // incluso en móviles angostos.
-export default function KeyRing({ keyStatuses, interactive, dimmed, onKeyClick }: KeyRingProps) {
+export default function KeyRing({ keyStatuses, interactive, dimmed, revealValues, onKeyClick }: KeyRingProps) {
   const { viewport } = useThree();
 
   const { bases, size } = useMemo(() => {
@@ -60,18 +62,24 @@ export default function KeyRing({ keyStatuses, interactive, dimmed, onKeyClick }
 
   return (
     <group>
-      {keyStatuses.map((status, i) => (
-        <Key3D
-          key={i}
-          id={i}
-          status={status}
-          base={bases[i]}
-          size={size}
-          hidden={dimmed && status !== 'CORRECT'}
-          interactive={interactive}
-          onKeyClick={onKeyClick}
-        />
-      ))}
+      {keyStatuses.map((status, i) => {
+        const reveal = revealValues?.[i] ?? null;
+        return (
+          <Key3D
+            key={i}
+            id={i}
+            status={status}
+            base={bases[i]}
+            size={size}
+            // Durante la revelación, las llaves con etiqueta se quedan
+            // visibles; al limpiar revealValues se desvanecen normal.
+            hidden={dimmed && status !== 'CORRECT' && !(reveal != null && status === 'IDLE')}
+            reveal={reveal}
+            interactive={interactive}
+            onKeyClick={onKeyClick}
+          />
+        );
+      })}
     </group>
   );
 }

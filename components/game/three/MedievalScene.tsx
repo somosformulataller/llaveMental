@@ -13,6 +13,9 @@ export interface MedievalSceneProps {
   interactive: boolean;
   /** 0-4: tesoro que se revela al ganar (varía por partida) */
   treasureVariant: number;
+  /** Premios de motivación tras las llaves no volteadas (fin de partida).
+      Mientras esté presente, la cámara espera antes de ir al tesoro. */
+  revealValues?: (number | null)[] | null;
   onKeyClick: (id: number) => void;
 }
 
@@ -50,6 +53,7 @@ export default function MedievalScene({
   keyStatuses,
   interactive,
   treasureVariant,
+  revealValues,
   onKeyClick,
 }: MedievalSceneProps) {
   return (
@@ -79,12 +83,15 @@ export default function MedievalScene({
         decay={2}
       />
 
-      <CameraRig open={lockStatus === 'OPEN'} />
+      {/* Con revelación activa la cámara espera: primero se leen las
+          etiquetas de las llaves no volteadas, luego avanza al tesoro */}
+      <CameraRig open={lockStatus === 'OPEN' && !revealValues} />
       <Dungeon lockStatus={lockStatus} treasureVariant={treasureVariant} />
       <KeyRing
         keyStatuses={keyStatuses}
         interactive={interactive}
         dimmed={lockStatus === 'OPEN'}
+        revealValues={revealValues}
         onKeyClick={onKeyClick}
       />
     </Canvas>
