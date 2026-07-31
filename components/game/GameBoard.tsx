@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import GameScene from './GameScene';
 import VaultCounter from './VaultCounter';
-import LoseModal from './LoseModal';
 import BuyTicketsModal from '@/components/payments/BuyTicketsModal';
 import { usePlayer } from '@/components/providers/PlayerProvider';
 import { GameStatus, KeyStatus, LockStatus } from '@/types/game';
@@ -226,11 +225,11 @@ export default function GameBoard() {
           setIsDecreasing(false);
         }, 800);
 
-        // Pozo agotado: fin de la partida
+        // Con la tabla de consolación la puerta siempre abre, así que
+        // esto solo puede llegar de una sesión vieja: reiniciar solo,
+        // sin modal de derrota.
         if (data.game_over || data.vault <= 0) {
-          setTimeout(() => {
-            setGameStatus('COMPLETED_LOSE');
-          }, 1000);
+          setTimeout(() => handlePlayAgain(), 1200);
         }
       } else if (data.animation === 'LOCK_OPENED') {
         // WIN animation
@@ -448,13 +447,8 @@ export default function GameBoard() {
       )}
       </div>
 
-      {/* Al ganar NO hay modal: solo el aviso y se sigue jugando */}
-      <AnimatePresence>
-        {gameStatus === 'COMPLETED_LOSE' && (
-          <LoseModal onPlayAgain={handlePlayAgain} />
-        )}
-      </AnimatePresence>
-
+      {/* Sin modales de resultado: la puerta siempre abre con algo
+          (mínimo $0.50) y la escena se reinicia sola para seguir. */}
       <BuyTicketsModal open={buyOpen} onClose={() => setBuyOpen(false)} />
     </div>
   );
