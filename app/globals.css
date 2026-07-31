@@ -2296,6 +2296,18 @@ select.ref-input { appearance: auto; }
 }
 .win-banner strong { color: var(--gold-1); }
 
+/* Monedas ocultas: adelanto del premio soltado por un fallo */
+.bonus-banner {
+  font-size: 0.85rem;
+  padding: 7px 14px;
+  animation: bonus-glint 0.9s ease-out;
+}
+@keyframes bonus-glint {
+  0% { box-shadow: 0 0 0 rgba(245, 197, 24, 0); }
+  40% { box-shadow: 0 0 22px rgba(245, 197, 24, 0.55); }
+  100% { box-shadow: var(--shadow-gold); }
+}
+
 /* ============================================
    CHAT DE ATENCIÓN AL CLIENTE
    ============================================ */

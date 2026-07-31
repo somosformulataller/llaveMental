@@ -31,6 +31,10 @@ export interface TryKeyResponse {
   success: boolean;
   vault: number;
   payout?: number;
+  /** Lo acreditado al saldo al abrir (premio menos adelantos) */
+  credited?: number;
+  /** Adelanto del premio soltado por este fallo (monedas ocultas) */
+  bonus?: number;
   animation: 'KEY_BROKEN' | 'LOCK_OPENED';
   game_over?: boolean;
   error?: string;

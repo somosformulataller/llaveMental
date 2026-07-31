@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { TOTAL_KEYS, VAULT_STEP } from '@/lib/game/constants';
+import { PRIZE_ADVANCES, TOTAL_KEYS, VAULT_STEP } from '@/lib/game/constants';
 
 interface TryKeyBody {
   session_id: string;
@@ -105,11 +105,27 @@ export async function POST(req: NextRequest) {
         await admin.from('app_events').insert({ player_id: user.id, event_type: 'game_lose' });
       }
 
+      // Adelanto del premio: este fallo suelta unas monedas (parte del
+      // premio final, que al abrir se paga MENOS lo ya adelantado).
+      let bonus = 0;
+      if (!gameOver && targetPayout > 0) {
+        const adv = PRIZE_ADVANCES.find((a) => a.failNumber === updatedKeysTried.length);
+        if (adv) {
+          const { error: advError } = await admin.rpc('credit_prize', {
+            p_player: user.id,
+            p_payout: adv.amount,
+          });
+          if (advError) console.error('credit_prize (adelanto) error:', advError);
+          else bonus = adv.amount;
+        }
+      }
+
       return NextResponse.json({
         success: false,
         vault: newVault,
         animation: 'KEY_BROKEN',
         game_over: gameOver,
+        ...(bonus > 0 ? { bonus } : {}),
       });
     } else {
       // errors_remaining === 0: esta llave ABRE — revelar el premio
@@ -125,12 +141,21 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', session_id);
 
-      // Acreditar el premio al saldo retirable (RPC atómico)
-      const { error: prizeError } = await admin.rpc('credit_prize', {
-        p_player: user.id,
-        p_payout: finalPayout,
-      });
-      if (prizeError) console.error('credit_prize error:', prizeError);
+      // Acreditar el premio al saldo retirable (RPC atómico), MENOS
+      // los adelantos ya pagados durante los fallos de esta partida.
+      const failCount = updatedKeysTried.length - 1;
+      const advancesPaid = PRIZE_ADVANCES.filter((a) => a.failNumber <= failCount).reduce(
+        (s, a) => s + a.amount,
+        0
+      );
+      const remainder = Math.max(0, finalPayout - advancesPaid);
+      if (remainder > 0) {
+        const { error: prizeError } = await admin.rpc('credit_prize', {
+          p_player: user.id,
+          p_payout: remainder,
+        });
+        if (prizeError) console.error('credit_prize error:', prizeError);
+      }
 
       await admin.from('game_history').insert({
         player_id: user.id,
@@ -144,6 +169,9 @@ export async function POST(req: NextRequest) {
         success: true,
         vault: finalPayout,
         payout: finalPayout,
+        // Lo que se sumó al saldo AHORA (el resto ya se adelantó en
+        // los fallos): el cliente suma esto, no el premio completo.
+        credited: remainder,
         animation: 'LOCK_OPENED',
       });
     }

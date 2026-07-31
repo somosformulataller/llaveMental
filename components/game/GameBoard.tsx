@@ -25,6 +25,8 @@ export default function GameBoard() {
   const [winBanner, setWinBanner] = useState<number | null>(null);
   // Mensaje "¡Fantástico!" sobre el tesoro mientras se ve la sala
   const [treasurePrize, setTreasurePrize] = useState<number | null>(null);
+  // Monedas ocultas: adelanto del premio soltado por un fallo
+  const [bonusFlash, setBonusFlash] = useState<number | null>(null);
   const [isDecreasing, setIsDecreasing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -225,6 +227,17 @@ export default function GameBoard() {
           setIsDecreasing(false);
         }, 800);
 
+        // Monedas ocultas: este fallo soltó un adelanto del premio.
+        // Se suma al saldo YA (el servidor ya lo acreditó) con un
+        // tintineo y un aviso dorado.
+        if (data.bonus) {
+          playTone(1046, 0.12, 'sine', 0.35);
+          setTimeout(() => playTone(1568, 0.18, 'sine', 0.3), 110);
+          setBonusFlash(data.bonus);
+          if (player) updateBalance(player.balance + data.bonus);
+          setTimeout(() => setBonusFlash(null), 2600);
+        }
+
         // Con la tabla de consolación la puerta siempre abre, así que
         // esto solo puede llegar de una sesión vieja: reiniciar solo,
         // sin modal de derrota.
@@ -251,7 +264,9 @@ export default function GameBoard() {
         setTimeout(() => {
           setTreasurePrize(null);
           setWinBanner(data.payout);
-          if (player) updateBalance(player.balance + data.payout);
+          // Sumar solo lo acreditado al abrir: los adelantos ya se
+          // sumaron al saldo cuando salieron las monedas.
+          if (player) updateBalance(player.balance + (data.credited ?? data.payout));
         }, 5200);
         setTimeout(() => handlePlayAgain(), 7000);
         setTimeout(() => setWinBanner(null), 11_000);
@@ -335,6 +350,19 @@ export default function GameBoard() {
               transition={{ duration: 0.35, ease: 'easeOut' }}
             >
               🏆 ¡Ganaste <strong>${winBanner.toFixed(2)}</strong>! Ya está en tu saldo
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {bonusFlash !== null && (
+            <motion.div
+              className="win-banner bonus-banner"
+              initial={{ opacity: 0, y: -10, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+            >
+              🪙 ¡Monedas ocultas! <strong>+${bonusFlash.toFixed(2)}</strong> a tu saldo
             </motion.div>
           )}
         </AnimatePresence>

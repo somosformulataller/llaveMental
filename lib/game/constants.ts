@@ -27,3 +27,15 @@ export const PAYOUT_TABLE: PayoutTier[] = [
 ];
 
 export const TOTAL_WEIGHT = PAYOUT_TABLE.reduce((sum, t) => sum + t.weight, 0);
+
+// Adelantos del premio en partidas largas: el fallo n° indicado suelta
+// una parte del premio final, acreditada al saldo en el momento. El
+// total pagado por partida NO cambia (al abrir se acredita el premio
+// menos lo adelantado) → RTP intacto. Así la partida de consolación
+// va sumando: +$0.15 al principio, +$0.15 al medio y $0.20 al abrir.
+// Aplica a TODA partida que llegue a esos fallos (no solo la de $0.50)
+// para que un adelanto no delate el resultado.
+export const PRIZE_ADVANCES: { failNumber: number; amount: number }[] = [
+  { failNumber: 6, amount: 0.15 },
+  { failNumber: 13, amount: 0.15 },
+];
