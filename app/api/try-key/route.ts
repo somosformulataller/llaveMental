@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { PRIZE_ADVANCES, TOTAL_KEYS, VAULT_STEP } from '@/lib/game/constants';
+import { PAYOUT_TABLE, TOTAL_KEYS, VAULT_STEP } from '@/lib/game/constants';
 
 interface TryKeyBody {
   session_id: string;
@@ -72,6 +72,10 @@ export async function POST(req: NextRequest) {
     // pozo llegara a 0, la partida termina como derrota (jamás debe
     // mostrarse la puerta abriéndose con premio $0).
     const targetPayout = parseFloat(session.target_payout);
+    // Cronograma de adelantos del tier de esta partida (las sesiones
+    // selladas con tablas viejas no calzan y quedan sin adelantos).
+    const tierAdvances =
+      PAYOUT_TABLE.find((t) => t.payout === targetPayout)?.advances ?? [];
     if (errorsRemaining > 0 || targetPayout <= 0) {
       // Esta llave FALLA — decrementar contador
       const newVault = Math.max(0, currentVault - VAULT_STEP);
@@ -109,7 +113,7 @@ export async function POST(req: NextRequest) {
       // premio final, que al abrir se paga MENOS lo ya adelantado).
       let bonus = 0;
       if (!gameOver && targetPayout > 0) {
-        const adv = PRIZE_ADVANCES.find((a) => a.failNumber === updatedKeysTried.length);
+        const adv = tierAdvances.find((a) => a.fail === updatedKeysTried.length);
         if (adv) {
           const { error: advError } = await admin.rpc('credit_prize', {
             p_player: user.id,
@@ -144,11 +148,11 @@ export async function POST(req: NextRequest) {
       // Acreditar el premio al saldo retirable (RPC atómico), MENOS
       // los adelantos ya pagados durante los fallos de esta partida.
       const failCount = updatedKeysTried.length - 1;
-      const advancesPaid = PRIZE_ADVANCES.filter((a) => a.failNumber <= failCount).reduce(
-        (s, a) => s + a.amount,
-        0
-      );
-      const remainder = Math.max(0, finalPayout - advancesPaid);
+      const advancesPaid = tierAdvances
+        .filter((a) => a.fail <= failCount)
+        .reduce((s, a) => s + a.amount, 0);
+      // Redondeo a centavos: evita residuos binarios de sumar decimales
+      const remainder = Math.max(0, Math.round((finalPayout - advancesPaid) * 100) / 100);
       if (remainder > 0) {
         const { error: prizeError } = await admin.rpc('credit_prize', {
           p_player: user.id,

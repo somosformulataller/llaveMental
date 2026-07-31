@@ -6,6 +6,9 @@ export interface PayoutTier {
   payout: number;
   requiredErrors: number;
   weight: number;
+  /** Adelantos del premio: el fallo n° `fail` suelta `amount` al saldo.
+      La puerta paga al final el premio MENOS lo adelantado. */
+  advances?: { fail: number; amount: number }[];
 }
 
 export interface GameSession {
