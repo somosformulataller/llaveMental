@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { VAULT_STEP } from '@/lib/game/constants';
+import { TOTAL_KEYS, VAULT_STEP } from '@/lib/game/constants';
 
 interface TryKeyBody {
   session_id: string;
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const body: TryKeyBody = await req.json();
     const { session_id, key_id } = body;
 
-    if (!session_id || key_id === undefined || key_id < 0 || key_id > 9) {
+    if (!session_id || key_id === undefined || key_id < 0 || key_id >= TOTAL_KEYS) {
       return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
     }
 
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       const newErrorsRemaining = Math.max(0, errorsRemaining - 1);
       // Derrota: el pozo llegó a 0 o ya no quedan llaves por probar
       // (lo segundo cubre sesiones viejas cuyo pozo no cierra en 0).
-      const gameOver = newVault <= 0 || updatedKeysTried.length >= 10;
+      const gameOver = newVault <= 0 || updatedKeysTried.length >= TOTAL_KEYS;
 
       await admin
         .from('game_sessions')

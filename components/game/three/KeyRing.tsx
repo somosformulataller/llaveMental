@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { KeyStatus } from '@/types/game';
+import { TOTAL_KEYS } from '@/lib/game/constants';
 import Key3D from './Key3D';
 
 interface KeyRingProps {
@@ -15,13 +16,20 @@ interface KeyRingProps {
 }
 
 const CAMERA_Z = 6.2;
-const FRONT_ROW_Z = 1.95;
-const BACK_ROW_Z = 1.45;
+const COLS = 5;
+const ROWS = Math.ceil(TOTAL_KEYS / COLS);
+// Anfiteatro: la fila 0 (trasera) más alta y lejos; cada fila siguiente
+// baja y se acerca a la cámara para que ninguna tape a la de atrás.
+const ROW_TOP_Y = 1.58;
+const ROW_STEP_Y = 0.36;
+const ROW_BACK_Z = 1.3;
+const ROW_STEP_Z = 0.24;
+const FRONT_ROW_Z = ROW_BACK_Z + (ROWS - 1) * ROW_STEP_Z;
 // Margen horizontal: ancho de la llave + vaivén del parallax de cámara
 const EDGE_MARGIN = 0.6;
 
-// Las 10 llaves flotando en dos filas frente a la puerta. El ancho y
-// el tamaño se calculan con el ancho VISIBLE a la profundidad de las
+// Las llaves flotando en filas frente a la puerta. El ancho y el
+// tamaño se calculan con el ancho VISIBLE a la profundidad de las
 // llaves (no en el origen): así todas entran siempre en pantalla,
 // incluso en móviles angostos.
 export default function KeyRing({ keyStatuses, interactive, dimmed, onKeyClick }: KeyRingProps) {
@@ -32,17 +40,19 @@ export default function KeyRing({ keyStatuses, interactive, dimmed, onKeyClick }
     // fila delantera (más cerca de la cámara) el ancho visible es menor.
     const widthAtFront = viewport.width * ((CAMERA_Z - FRONT_ROW_Z) / CAMERA_Z);
     const usable = Math.max(0.9, widthAtFront - EDGE_MARGIN);
-    const spacing = THREE.MathUtils.clamp(usable / 4, 0.24, 0.68);
-    const keySize = THREE.MathUtils.clamp(spacing / 0.62, 0.5, 1);
+    const spacing = THREE.MathUtils.clamp(usable / (COLS - 1), 0.24, 0.68);
+    // Con 4 filas las llaves son algo más chicas que con 2 para que la
+    // pila completa quepa sin taparse.
+    const keySize = THREE.MathUtils.clamp(spacing / 0.78, 0.42, 0.8);
 
     const out: [number, number, number][] = [];
-    for (let i = 0; i < 10; i++) {
-      const row = Math.floor(i / 5); // 0 = fila trasera, 1 = fila delantera
-      const col = i % 5;
+    for (let i = 0; i < TOTAL_KEYS; i++) {
+      const row = Math.floor(i / COLS);
+      const col = i % COLS;
       out.push([
-        (col - 2) * spacing + (row === 1 ? spacing * 0.12 : 0),
-        row === 0 ? 1.12 : 0.52,
-        row === 0 ? BACK_ROW_Z : FRONT_ROW_Z,
+        (col - (COLS - 1) / 2) * spacing + (row % 2 === 1 ? spacing * 0.12 : 0),
+        ROW_TOP_Y - row * ROW_STEP_Y,
+        ROW_BACK_Z + row * ROW_STEP_Z,
       ]);
     }
     return { bases: out, size: keySize };
