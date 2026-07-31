@@ -2,6 +2,7 @@
 
 import { motion, useSpring, useTransform } from 'framer-motion';
 import { useEffect } from 'react';
+import { VAULT_STEP } from '@/lib/game/constants';
 
 interface VaultCounterProps {
   amount: number;
@@ -40,7 +41,7 @@ export default function VaultCounter({ amount, isDecreasing = false }: VaultCoun
           animate={{ opacity: [0, 1, 1, 0], y: [0, -10, -20, -30] }}
           transition={{ duration: 1 }}
         >
-          -$2.00
+          -${VAULT_STEP.toFixed(2)}
         </motion.div>
       )}
     </div>

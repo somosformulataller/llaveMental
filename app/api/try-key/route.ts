@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { VAULT_STEP } from '@/lib/game/constants';
 
 interface TryKeyBody {
   session_id: string;
@@ -66,11 +67,18 @@ export async function POST(req: NextRequest) {
     const currentVault: number = parseFloat(session.current_vault);
 
     // === LÓGICA CENTRAL: el destino se selló al comprar el ticket ===
-    if (errorsRemaining > 0) {
+    // Salvaguarda para sesiones selladas con tablas anteriores: si el
+    // destino es perder ($0) pero los errores ya se agotaron sin que el
+    // pozo llegara a 0, la partida termina como derrota (jamás debe
+    // mostrarse la puerta abriéndose con premio $0).
+    const targetPayout = parseFloat(session.target_payout);
+    if (errorsRemaining > 0 || targetPayout <= 0) {
       // Esta llave FALLA — decrementar contador
-      const newVault = currentVault - 2;
-      const newErrorsRemaining = errorsRemaining - 1;
-      const gameOver = newVault <= 0;
+      const newVault = Math.max(0, currentVault - VAULT_STEP);
+      const newErrorsRemaining = Math.max(0, errorsRemaining - 1);
+      // Derrota: el pozo llegó a 0 o ya no quedan llaves por probar
+      // (lo segundo cubre sesiones viejas cuyo pozo no cierra en 0).
+      const gameOver = newVault <= 0 || updatedKeysTried.length >= 10;
 
       await admin
         .from('game_sessions')
