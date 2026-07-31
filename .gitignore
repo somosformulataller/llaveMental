@@ -54,4 +54,5 @@ next-env.d.ts
 .env*
 pagos.md
 chat.md
+rtp-propuesta.md
 img/
