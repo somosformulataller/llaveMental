@@ -3,9 +3,43 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useSpring, useTransform } from 'framer-motion';
 import { usePlayer } from '@/components/providers/PlayerProvider';
 import NotificationsBell from './NotificationsBell';
+
+// Saldo como CONTADOR: al ganar monedas o premios el número va
+// sumando visiblemente (centavo a centavo) en vez de saltar de golpe,
+// con un pulso verde mientras sube.
+function AnimatedBalance({ value }: { value: number }) {
+  const spring = useSpring(value, { stiffness: 42, damping: 16 });
+  const display = useTransform(spring, (v) => `$${Math.max(0, v).toFixed(2)}`);
+  const [pulse, setPulse] = useState(false);
+  const prev = useRef(value);
+
+  useEffect(() => {
+    if (value !== prev.current) {
+      prev.current = value;
+      spring.set(value);
+      setPulse(true);
+      const t = setTimeout(() => setPulse(false), 1100);
+      return () => clearTimeout(t);
+    }
+  }, [value, spring]);
+
+  return (
+    <motion.span
+      className="wallet-amount"
+      animate={
+        pulse
+          ? { scale: 1.3, color: '#00ff87' }
+          : { scale: 1, color: '#f5c518' }
+      }
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+    >
+      {display}
+    </motion.span>
+  );
+}
 
 // Header en una sola fila: desplegable de navegación (UI propia),
 // contadores de tickets y saldo actuales, y la campanita de
@@ -122,17 +156,7 @@ export default function Header() {
               </Link>
               <Link href="/billetera" className="wallet-badge" prefetch>
                 <span className="wallet-icon">💰</span>
-                {/* Al cambiar el saldo (p. ej. al ganar) se ve la suma:
-                    pulso verde que vuelve al dorado */}
-                <motion.span
-                  key={player.balance}
-                  className="wallet-amount"
-                  initial={{ scale: 1.45, color: '#00ff87' }}
-                  animate={{ scale: 1, color: '#f5c518' }}
-                  transition={{ duration: 0.9, ease: 'easeOut' }}
-                >
-                  ${player.balance.toFixed(2)}
-                </motion.span>
+                <AnimatedBalance value={player.balance} />
               </Link>
             </div>
           )}

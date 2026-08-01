@@ -53,6 +53,13 @@ export default function GameBoard() {
   const [treasurePrize, setTreasurePrize] = useState<number | null>(null);
   // Monedas ocultas: adelanto del premio soltado por un fallo
   const [bonusFlash, setBonusFlash] = useState<number | null>(null);
+  // Salto de monedas doradas (se re-monta por id en cada estallido)
+  const [coinBurst, setCoinBurst] = useState<number | null>(null);
+  const burstSeq = useRef(0);
+  // Total de monedas ocultas cobradas en la partida en curso
+  const bonusPaidRef = useRef(0);
+  // true si el premio del tesoro se reunió con monedas ocultas
+  const [treasureCoins, setTreasureCoins] = useState(false);
   // Revelación final: qué "escondían" las llaves no volteadas
   const [revealMap, setRevealMap] = useState<(number | null)[] | null>(null);
   const [isDecreasing, setIsDecreasing] = useState(false);
@@ -105,6 +112,7 @@ export default function GameBoard() {
 
   // Restaura una partida con su estado real: pozo y llaves probadas
   const resumeSession = useCallback((id: string, vaultValue: number, keysTried: number[]) => {
+    bonusPaidRef.current = 0;
     setSessionId(id);
     setVault(vaultValue);
     setGameStatus('ACTIVE');
@@ -169,6 +177,7 @@ export default function GameBoard() {
         return;
       }
 
+      bonusPaidRef.current = 0;
       setSessionId(data.session_id);
       setVault(data.vault);
       setGameStatus('ACTIVE');
@@ -257,13 +266,17 @@ export default function GameBoard() {
 
         // Monedas ocultas: este fallo soltó un adelanto del premio.
         // Se suma al saldo YA (el servidor ya lo acreditó) con un
-        // tintineo y un aviso dorado.
+        // tintineo, un aviso dorado y monedas saltando hacia el saldo.
         if (data.bonus) {
           playTone(1046, 0.12, 'sine', 0.35);
           setTimeout(() => playTone(1568, 0.18, 'sine', 0.3), 110);
+          bonusPaidRef.current += data.bonus;
           setBonusFlash(data.bonus);
+          burstSeq.current += 1;
+          setCoinBurst(burstSeq.current);
           if (player) updateBalance(player.balance + data.bonus);
           setTimeout(() => setBonusFlash(null), 2600);
+          setTimeout(() => setCoinBurst(null), 1700);
         }
 
         // Con la tabla de consolación la puerta siempre abre, así que
@@ -301,6 +314,7 @@ export default function GameBoard() {
         // "¡Fantástico!" con el premio; luego el aviso de que ya está
         // en el saldo (y el contador del header suma en ese momento).
         // La escena se reinicia sola para seguir jugando.
+        setTreasureCoins(bonusPaidRef.current > 0);
         setTimeout(() => setTreasurePrize(data.payout), 1800 + shift);
         setTimeout(() => {
           setTreasurePrize(null);
@@ -308,6 +322,9 @@ export default function GameBoard() {
           // Sumar solo lo acreditado al abrir: los adelantos ya se
           // sumaron al saldo cuando salieron las monedas.
           if (player) updateBalance(player.balance + (data.credited ?? data.payout));
+          burstSeq.current += 1;
+          setCoinBurst(burstSeq.current);
+          setTimeout(() => setCoinBurst(null), 1700);
         }, 5200 + shift);
         setTimeout(() => handlePlayAgain(), 7000 + shift);
         setTimeout(() => setWinBanner(null), 11_000 + shift);
@@ -325,12 +342,14 @@ export default function GameBoard() {
   };
 
   const handlePlayAgain = () => {
+    bonusPaidRef.current = 0;
     setGameStatus('IDLE');
     setSessionId(null);
     setVault(INITIAL_VAULT);
     setKeyStatuses(Array(TOTAL_KEYS).fill('IDLE'));
     setLockStatus('IDLE');
     setTreasurePrize(null);
+    setTreasureCoins(false);
     setRevealMap(null);
     setError(null);
     refresh();
@@ -364,6 +383,32 @@ export default function GameBoard() {
         onKeyClick={handleKeyClick}
       />
 
+      {/* Monedas doradas saltando hacia el saldo (bonus o premio) */}
+      <AnimatePresence>
+        {coinBurst !== null && (
+          <div className="coin-burst" key={coinBurst} aria-hidden>
+            {Array.from({ length: 9 }).map((_, i) => (
+              <motion.span
+                key={i}
+                className="coin-burst-coin"
+                initial={{ opacity: 0, x: 0, y: 0, scale: 0.5, rotate: 0 }}
+                animate={{
+                  opacity: [0, 1, 1, 0],
+                  x: (i - 4) * 34 + ((i * 37) % 13) - 6,
+                  y: [0, -150 - ((i * 53) % 70), -80 - ((i * 29) % 50)],
+                  scale: [0.5, 1.2, 1, 0.6],
+                  rotate: (i % 2 === 0 ? 1 : -1) * (140 + i * 25),
+                }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.25, delay: i * 0.055, ease: 'easeOut' }}
+              >
+                🪙
+              </motion.span>
+            ))}
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Mensaje sobre el tesoro al abrirse la puerta */}
       <AnimatePresence>
         {treasurePrize !== null && (
@@ -376,7 +421,16 @@ export default function GameBoard() {
           >
             <p className="treasure-msg-title">✨ ¡Fantástico! ✨</p>
             <p className="treasure-msg-sub">
-              Has ganado un premio de <strong>${treasurePrize.toFixed(2)}</strong>
+              {treasureCoins ? (
+                <>
+                  🪙 Con todas tus monedas ocultas has reunido{' '}
+                  <strong>${treasurePrize.toFixed(2)}</strong> en total
+                </>
+              ) : (
+                <>
+                  Has ganado un premio de <strong>${treasurePrize.toFixed(2)}</strong>
+                </>
+              )}
             </p>
           </motion.div>
         )}
