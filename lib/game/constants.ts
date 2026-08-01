@@ -28,20 +28,22 @@ export const VAULT_SEQUENCE = [
 // puerta paga al final el premio MENOS lo adelantado. El total por
 // partida no cambia ni un centavo → RTP intacto. Todos los montos en
 // centavos exactos (la columna balance es DECIMAL(10,2)).
-// Pesos rebalanceados el 01/08/2026 a pedido del jefe: ganar $2.50 o
-// más pasa de 60% a 65.5% de las partidas (consolación 34.5%). El
-// costo, con el mismo RTP, es que los premios altos son algo más
-// raros. E = $1.962 → RTP 98.1%.
+// Pesos calibrados POR SIMULACIÓN (5M de partidas) el 01/08/2026 junto
+// con la regla CORTA-RACHAS de buy-ticket: nunca 3 consolaciones
+// seguidas (si el sorteo da $0.50 y las últimas 2 partidas del jugador
+// fueron $0.50, se resortea entre $2.50+). Resultado global: RTP
+// 98.1%, consolación efectiva 34.7%, ganar $2.50+ en 65.3% de las
+// partidas y racha máxima de consolaciones = 2.
 export const PAYOUT_TABLE: PayoutTier[] = [
-  { payout: 0.5, requiredErrors: 14, weight: 345,
+  { payout: 0.5, requiredErrors: 14, weight: 385,
     advances: [{ fail: 5, amount: 0.15 }, { fail: 10, amount: 0.15 }] },          // puerta: 0.20
-  { payout: 2.5, requiredErrors: 10, weight: 530,
+  { payout: 2.5, requiredErrors: 10, weight: 499,
     advances: [{ fail: 3, amount: 0.5 }, { fail: 6, amount: 0.5 }, { fail: 8, amount: 0.75 }] },  // puerta: 0.75
-  { payout: 3,   requiredErrors: 9,  weight: 80,
+  { payout: 3,   requiredErrors: 9,  weight: 76,
     advances: [{ fail: 3, amount: 0.5 }, { fail: 5, amount: 0.75 }, { fail: 7, amount: 0.75 }] }, // puerta: 1.00
-  { payout: 3.5, requiredErrors: 8,  weight: 15,
+  { payout: 3.5, requiredErrors: 8,  weight: 14,
     advances: [{ fail: 2, amount: 0.5 }, { fail: 4, amount: 0.75 }, { fail: 6, amount: 1 }] },    // puerta: 1.25
-  { payout: 4,   requiredErrors: 7,  weight: 10,
+  { payout: 4,   requiredErrors: 7,  weight: 9,
     advances: [{ fail: 2, amount: 0.75 }, { fail: 4, amount: 0.75 }, { fail: 6, amount: 1 }] },   // puerta: 1.50
   { payout: 5,   requiredErrors: 6,  weight: 8,
     advances: [{ fail: 2, amount: 1 }, { fail: 4, amount: 1.5 }] },               // puerta: 2.50

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
 import { BLOCKED_MESSAGE, isBlocked } from '@/lib/supabase/blocked';
-import { drawPayoutTier } from '@/lib/game/rng';
+import { drawPayoutTier, drawWinningTier } from '@/lib/game/rng';
 import { INITIAL_VAULT } from '@/lib/game/constants';
 
 // Inicia una partida consumiendo 1 ticket. La lógica RTP/RNG no
@@ -84,11 +84,28 @@ export async function POST() {
     }
 
     // 5. RNG: seleccionar el destino de la partida (SOLO servidor)
-    const payoutTier = drawPayoutTier();
+    const admin = createAdminClient();
+    let payoutTier = drawPayoutTier();
+
+    // Corta-rachas: NUNCA 3 consolaciones seguidas. Si el sorteo dio
+    // $0.50 y las 2 partidas anteriores del jugador también fueron
+    // $0.50 (o menos), se resortea entre los premios de $2.50+. Los
+    // pesos base de la tabla están calibrados por simulación para que
+    // con esta regla el RTP global quede en 98.1%.
+    if (payoutTier.payout === 0.5) {
+      const { data: last2 } = await admin
+        .from('game_history')
+        .select('payout')
+        .eq('player_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(2);
+      if (last2 && last2.length === 2 && last2.every((g) => Number(g.payout) <= 0.5)) {
+        payoutTier = drawWinningTier();
+      }
+    }
 
     // 6. Crear la sesión (cliente privilegiado: el navegador ya no
     //    puede escribir game_sessions)
-    const admin = createAdminClient();
     const { data: session, error: sessionError } = await admin
       .from('game_sessions')
       .insert({
