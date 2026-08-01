@@ -2249,32 +2249,53 @@ select.ref-input { appearance: auto; }
 .treasure-msg {
   position: absolute;
   top: 15%;
+  /* Centrado con márgenes (framer-motion controla transform aquí) */
   left: 0;
   right: 0;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: calc(100vw - 32px);
   text-align: center;
   z-index: 6;
   pointer-events: none;
-  padding: 0 16px;
+  /* Panel oscuro translúcido: el texto se lee sobre cualquier brillo
+     del tesoro, sin depender solo de las sombras */
+  padding: 10px 22px 14px;
+  border-radius: 18px;
+  background: rgba(10, 7, 4, 0.55);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid rgba(245, 197, 24, 0.28);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.45);
 }
 .treasure-msg-title {
   font-family: var(--font-display);
   font-size: clamp(1.6rem, 6vw, 2.4rem);
   font-weight: 700;
   color: var(--gold-2);
-  text-shadow: 0 0 24px rgba(245, 197, 24, 0.65), 0 2px 10px rgba(0, 0, 0, 0.8);
+  text-shadow:
+    0 2px 3px rgba(0, 0, 0, 0.95),
+    0 4px 14px rgba(0, 0, 0, 0.85),
+    0 0 24px rgba(245, 197, 24, 0.55);
   letter-spacing: 0.04em;
 }
 .treasure-msg-sub {
   margin-top: 4px;
   font-size: clamp(0.95rem, 3.5vw, 1.15rem);
   color: var(--text-primary);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 1),
+    0 2px 8px rgba(0, 0, 0, 0.95),
+    0 0 14px rgba(0, 0, 0, 0.8);
 }
 .treasure-msg-sub strong {
   color: var(--green-win);
   font-family: var(--font-display);
   font-size: 1.25em;
-  text-shadow: 0 0 18px rgba(0, 255, 135, 0.5);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 1),
+    0 2px 10px rgba(0, 0, 0, 0.9),
+    0 0 18px rgba(0, 255, 135, 0.45);
 }
 
 /* Aviso flotante al ganar (no bloquea: se sigue jugando) */
