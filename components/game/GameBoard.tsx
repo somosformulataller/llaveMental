@@ -257,7 +257,9 @@ export default function GameBoard() {
           next[keyId] = 'BROKEN';
           return next;
         });
-        setLockStatus('SHAKE');
+        // Con monedas la cerradura destella VERDE (no fue un error);
+        // sin monedas, el rojo clásico de llave incorrecta.
+        setLockStatus(data.bonus ? 'COINS' : 'SHAKE');
         setIsDecreasing(true);
         setVaultDrop(Math.max(0, Math.round((vault - data.vault) * 100) / 100));
         setVault(data.vault);
@@ -505,6 +507,17 @@ export default function GameBoard() {
             exit={{ opacity: 0 }}
           >
             ✗ Llave incorrecta
+          </motion.p>
+        )}
+        {lockStatus === 'COINS' && (
+          <motion.p
+            key="coins-text"
+            className="lock-status-text lock-coins"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            🪙 ¡Esta llave escondía monedas!
           </motion.p>
         )}
       </AnimatePresence>

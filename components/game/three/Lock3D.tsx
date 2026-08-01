@@ -14,6 +14,10 @@ interface Lock3DProps {
 
 const RED_FLASH = new THREE.Color('#ff2e3f');
 const RED_DEEP = new THREE.Color('#c41220');
+// Verde "monedas": la llave no abrió pero soltó premio (no es error)
+const GREEN_FLASH = new THREE.Color('#00e57a');
+const GREEN_DEEP = new THREE.Color('#0c8f4e');
+const GLOW_GREEN = new THREE.Color('#2bff9e');
 const GOLD_GLOW = new THREE.Color('#ffb84d');
 // Colores base de cada material (para volver del rojo al dorado)
 const GOLD_BASE = new THREE.Color('#c8942f');
@@ -111,6 +115,19 @@ export default function Lock3D({ status, envMap }: Lock3DProps) {
       }
       glow.color.lerp(GLOW_RED, k);
       glow.opacity = THREE.MathUtils.damp(glow.opacity, 0.6, 10, delta);
+    } else if (status === 'COINS') {
+      // Llave con monedas: destello VERDE alegre con un rebote suave
+      // (nada de vibración agresiva — no es un error).
+      g.position.x = THREE.MathUtils.damp(g.position.x, LOCK_LOCAL_POS[0], 12, delta);
+      g.position.y = LOCK_LOCAL_POS[1] + Math.abs(Math.sin(t * 12)) * 0.025;
+      for (const [m] of mats) {
+        m.color.lerp(GREEN_DEEP, k);
+        m.emissive.copy(GREEN_FLASH);
+        m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, 1.1, 14, delta);
+        m.envMapIntensity = THREE.MathUtils.damp(m.envMapIntensity, 0.15, 12, delta);
+      }
+      glow.color.lerp(GLOW_GREEN, k);
+      glow.opacity = THREE.MathUtils.damp(glow.opacity, 0.55, 10, delta);
     } else if (status === 'OPEN') {
       g.position.x = THREE.MathUtils.damp(g.position.x, LOCK_LOCAL_POS[0], 12, delta);
       g.position.y = THREE.MathUtils.damp(g.position.y, LOCK_LOCAL_POS[1], 12, delta);

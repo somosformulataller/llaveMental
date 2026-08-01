@@ -22,10 +22,15 @@ const COLS = 5;
 const ROWS = Math.ceil(TOTAL_KEYS / COLS);
 // Anfiteatro: la fila 0 (trasera) más alta y lejos; cada fila siguiente
 // baja y se acerca a la cámara para que ninguna tape a la de atrás.
-const ROW_TOP_Y = 1.58;
-const ROW_STEP_Y = 0.36;
+// El tope quedó BAJO la cerradura (y≈2.0 en la puerta): las llaves
+// nunca la tapan. Además las columnas van intercaladas en zigzag para
+// que no se vean en fila recta.
+const ROW_TOP_Y = 1.14;
+const ROW_STEP_Y = 0.27;
 const ROW_BACK_Z = 1.3;
 const ROW_STEP_Z = 0.24;
+// Zigzag vertical por columna (intercalado)
+const ZIGZAG_Y = [0.05, -0.08, 0.03, -0.08, 0.05];
 const FRONT_ROW_Z = ROW_BACK_Z + (ROWS - 1) * ROW_STEP_Z;
 // Margen horizontal: ancho de la llave + vaivén del parallax de cámara
 const EDGE_MARGIN = 0.6;
@@ -53,7 +58,7 @@ export default function KeyRing({ keyStatuses, interactive, dimmed, revealValues
       const col = i % COLS;
       out.push([
         (col - (COLS - 1) / 2) * spacing + (row % 2 === 1 ? spacing * 0.12 : 0),
-        ROW_TOP_Y - row * ROW_STEP_Y,
+        ROW_TOP_Y - row * ROW_STEP_Y + ZIGZAG_Y[col],
         ROW_BACK_Z + row * ROW_STEP_Z,
       ]);
     }

@@ -1,6 +1,7 @@
 export type GameStatus = 'IDLE' | 'ACTIVE' | 'COMPLETED_WIN' | 'COMPLETED_LOSE';
 export type KeyStatus = 'IDLE' | 'FLYING' | 'BROKEN' | 'CORRECT' | 'DISABLED';
-export type LockStatus = 'IDLE' | 'SHAKE' | 'OPEN';
+// COINS: la llave falló pero soltó monedas — destello VERDE (no rojo)
+export type LockStatus = 'IDLE' | 'SHAKE' | 'COINS' | 'OPEN';
 
 export interface PayoutTier {
   payout: number;

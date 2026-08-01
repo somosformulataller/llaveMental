@@ -319,6 +319,11 @@ h1, h2, h3 {
 
 .lock-open { color: var(--green-win); }
 .lock-shake { color: var(--red-lose); }
+/* Llave con monedas: verde (no es un error) */
+.lock-coins {
+  color: var(--green-win);
+  text-shadow: 0 0 14px rgba(0, 255, 135, 0.45), 0 2px 6px rgba(0, 0, 0, 0.8);
+}
 
 /* ============================================
    IDLE / ACTIVE SECTIONS
