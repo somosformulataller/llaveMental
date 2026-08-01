@@ -163,16 +163,15 @@ export default function Header() {
 
           <NotificationsBell />
         </div>
+      ) : isLoading ? (
+        // Cargando el perfil: no mostrar el header de "sin sesión"
+        // (parpadeaba un instante con restos de la vieja landing)
+        <div className="header-row" />
       ) : (
-        <div className="header-row">
-          <Link href="/game" className="nav-link" prefetch>
-            Jugar
+        <div className="header-row header-row-end">
+          <Link href="/auth/login" className="btn-login" prefetch>
+            Iniciar sesión
           </Link>
-          {!isLoading && (
-            <Link href="/auth/login" className="btn-login" prefetch>
-              Iniciar sesión
-            </Link>
-          )}
         </div>
       )}
     </header>

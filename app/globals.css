@@ -119,6 +119,8 @@ h1, h2, h3 {
   width: 100%;
   min-width: 0;
 }
+/* Sin sesión: solo el botón de entrar, alineado a la derecha */
+.header-row.header-row-end { justify-content: flex-end; }
 
 .header-badges {
   display: flex;
