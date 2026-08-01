@@ -63,6 +63,8 @@ export default function GameBoard() {
   // Revelación final: qué "escondían" las llaves no volteadas
   const [revealMap, setRevealMap] = useState<(number | null)[] | null>(null);
   const [isDecreasing, setIsDecreasing] = useState(false);
+  // Cuánto bajó el pozo en el último fallo (escalera variable)
+  const [vaultDrop, setVaultDrop] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [buyOpen, setBuyOpen] = useState(false);
@@ -257,6 +259,7 @@ export default function GameBoard() {
         });
         setLockStatus('SHAKE');
         setIsDecreasing(true);
+        setVaultDrop(Math.max(0, Math.round((vault - data.vault) * 100) / 100));
         setVault(data.vault);
 
         setTimeout(() => {
@@ -438,7 +441,7 @@ export default function GameBoard() {
 
       {/* UI superpuesta — arriba: el premio */}
       <div className="game-overlay game-overlay-top">
-        <VaultCounter amount={vault} isDecreasing={isDecreasing} />
+        <VaultCounter amount={vault} isDecreasing={isDecreasing} delta={vaultDrop ?? undefined} />
         <AnimatePresence>
           {winBanner !== null && (
             <motion.div

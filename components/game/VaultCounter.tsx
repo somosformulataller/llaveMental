@@ -7,9 +7,11 @@ import { VAULT_STEP } from '@/lib/game/constants';
 interface VaultCounterProps {
   amount: number;
   isDecreasing?: boolean;
+  /** Cuánto bajó el pozo en el último fallo (la escalera es variable) */
+  delta?: number;
 }
 
-export default function VaultCounter({ amount, isDecreasing = false }: VaultCounterProps) {
+export default function VaultCounter({ amount, isDecreasing = false, delta }: VaultCounterProps) {
   const springVal = useSpring(amount, { stiffness: 100, damping: 30 });
   const displayed = useTransform(springVal, (v) => `$${v.toFixed(2)}`);
 
@@ -41,7 +43,7 @@ export default function VaultCounter({ amount, isDecreasing = false }: VaultCoun
           animate={{ opacity: [0, 1, 1, 0], y: [0, -10, -20, -30] }}
           transition={{ duration: 1 }}
         >
-          -${VAULT_STEP.toFixed(2)}
+          -${(delta ?? VAULT_STEP).toFixed(2)}
         </motion.div>
       )}
     </div>

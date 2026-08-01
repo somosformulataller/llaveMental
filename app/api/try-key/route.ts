@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { PAYOUT_TABLE, TOTAL_KEYS, VAULT_STEP } from '@/lib/game/constants';
+import { PAYOUT_TABLE, TOTAL_KEYS, VAULT_SEQUENCE, VAULT_STEP } from '@/lib/game/constants';
 
 interface TryKeyBody {
   session_id: string;
@@ -72,13 +72,15 @@ export async function POST(req: NextRequest) {
     // pozo llegara a 0, la partida termina como derrota (jamás debe
     // mostrarse la puerta abriéndose con premio $0).
     const targetPayout = parseFloat(session.target_payout);
-    // Cronograma de adelantos del tier de esta partida (las sesiones
-    // selladas con tablas viejas no calzan y quedan sin adelantos).
-    const tierAdvances =
-      PAYOUT_TABLE.find((t) => t.payout === targetPayout)?.advances ?? [];
+    // Tier de esta partida (las sesiones selladas con tablas viejas no
+    // calzan: sin adelantos y con el paso fijo de respaldo).
+    const tier = PAYOUT_TABLE.find((t) => t.payout === targetPayout);
+    const tierAdvances = tier?.advances ?? [];
     if (errorsRemaining > 0 || targetPayout <= 0) {
-      // Esta llave FALLA — decrementar contador
-      const newVault = Math.max(0, currentVault - VAULT_STEP);
+      // Esta llave FALLA — el pozo baja siguiendo la escalera
+      const newVault = tier
+        ? VAULT_SEQUENCE[Math.min(updatedKeysTried.length, VAULT_SEQUENCE.length - 1)]
+        : Math.max(0, currentVault - VAULT_STEP);
       const newErrorsRemaining = Math.max(0, errorsRemaining - 1);
       // Derrota: el pozo llegó a 0 o ya no quedan llaves por probar
       // (lo segundo cubre sesiones viejas cuyo pozo no cierra en 0).
