@@ -61,7 +61,7 @@ function CoinKeysBadge({ count }: { count: number }) {
 
   return (
     <div className="wallet-badge keys-badge" title="Llaves con monedas ocultas disponibles">
-      <span className="wallet-icon">🗝️</span>
+      <span className="wallet-icon">🔑</span>
       <motion.span
         className="wallet-amount"
         animate={pulse ? { scale: 1.35, color: '#00ff87' } : { scale: 1, color: '#f5c518' }}
