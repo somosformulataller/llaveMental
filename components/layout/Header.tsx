@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion, useSpring, useTransform } from 'framer-motion';
 import { usePlayer } from '@/components/providers/PlayerProvider';
 import { useCoinKeys } from '@/lib/game/coinKeysStore';
@@ -86,6 +86,10 @@ export default function Header() {
   const { player, isLoading, isAdmin, signOut } = usePlayer();
   const coinKeys = useCoinKeys();
   const router = useRouter();
+  const pathname = usePathname();
+  // El contador de llaves SOLO aplica en la pantalla de juego (si se
+  // recarga en otra página con partida pendiente, ahí va el saldo)
+  const showCoinKeys = coinKeys !== null && pathname === '/game';
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -194,8 +198,8 @@ export default function Header() {
               </Link>
               {/* Con partida en curso: contador de llaves con monedas
                   ocultas (el saldo se ve en grande en la escena) */}
-              {coinKeys !== null ? (
-                <CoinKeysBadge count={coinKeys} />
+              {showCoinKeys ? (
+                <CoinKeysBadge count={coinKeys as number} />
               ) : (
                 <Link href="/billetera" className="wallet-badge" prefetch>
                   <span className="wallet-icon">💰</span>

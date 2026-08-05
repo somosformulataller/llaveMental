@@ -137,7 +137,13 @@ export default function GameBoard() {
     fetch('/api/session', { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
-        if (cancelled || !data.session) return;
+        if (cancelled) return;
+        if (!data.session) {
+          // No había partida que reanudar: descartar el contador
+          // recordado de la sesión anterior (respaldo de recarga)
+          setCoinKeys(null);
+          return;
+        }
         resumeSession(data.session.session_id, data.session.keys_tried, data.session.coin_keys);
       })
       .catch(() => {})
