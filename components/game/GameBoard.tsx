@@ -65,8 +65,6 @@ export default function GameBoard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [buyOpen, setBuyOpen] = useState(false);
-  // true cuando ya se consultó si había una partida activa que reanudar
-  const [sessionChecked, setSessionChecked] = useState(false);
 
   // Audio refs
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -116,6 +114,7 @@ export default function GameBoard() {
     setSessionId(id);
     setGameStatus('ACTIVE');
     setLockStatus('IDLE');
+    setRevealMap(null);
     setCoinKeys(typeof coinKeys === 'number' ? coinKeys : null);
     setKeyStatuses(() => {
       const next: KeyStatus[] = Array(TOTAL_KEYS).fill('IDLE');
@@ -146,10 +145,7 @@ export default function GameBoard() {
         }
         resumeSession(data.session.session_id, data.session.keys_tried, data.session.coin_keys);
       })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setSessionChecked(true);
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -192,6 +188,10 @@ export default function GameBoard() {
       setGameStatus('ACTIVE');
       setKeyStatuses(Array(TOTAL_KEYS).fill('IDLE'));
       setLockStatus('IDLE');
+      // Limpiar los restos de la jugada anterior (valores en llaves)
+      setRevealMap(null);
+      setTreasureCoins(false);
+      setWinBanner(null);
       setCoinKeys(typeof data.coin_keys === 'number' ? data.coin_keys : null);
       if (typeof data.tickets === 'number') updatePlayer({ tickets: data.tickets });
     } catch {
@@ -201,22 +201,19 @@ export default function GameBoard() {
     }
   }, [player, resumeSession, updatePlayer]);
 
-  // Con tickets disponibles la partida arranca SOLA: el jugador entra
-  // directo a la escena sin pasar por el botón "Jugar". Espera a saber
-  // si había una partida que reanudar y no reintenta si hubo un error
-  // (ahí sí se muestra el botón para intentarlo a mano).
-  useEffect(() => {
-    if (!sessionChecked || gameStatus !== 'IDLE' || isLoading || error || buyOpen) return;
-    if (!player || (player.tickets ?? 0) < 1) return;
-    // El arranque es asíncrono (fetch): el setState ocurre tras la
-    // respuesta, no en el cuerpo del efecto (falso positivo).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    handlePlay();
-  }, [sessionChecked, gameStatus, isLoading, error, buyOpen, player, handlePlay]);
-
   // Key attempt
   const handleKeyClick = async (keyId: number) => {
-    if (gameStatus !== 'ACTIVE' || !sessionId || isLoading) return;
+    if (isLoading || lockStatus === 'OPEN') return;
+    if (gameStatus !== 'ACTIVE' || !sessionId) {
+      // Pantalla de inicio o post-partida: tocar una llave arranca la
+      // jugada si hay tickets; sin tickets, sale el modal para comprar
+      // o canjear saldo por tickets.
+      if (gameStatus === 'IDLE' && player) {
+        if ((player.tickets ?? 0) < 1) setBuyOpen(true);
+        else handlePlay();
+      }
+      return;
+    }
     if (keyStatuses[keyId] !== 'IDLE') return;
 
     setIsLoading(true);
@@ -326,7 +323,6 @@ export default function GameBoard() {
         // y la cámara avanza al tesoro. Sobre el tesoro aparece el
         // "¡Fantástico!" con el premio; luego el aviso de que ya está
         // en el saldo (y el contador del header suma en ese momento).
-        // La escena se reinicia sola para seguir jugando.
         setTreasureCoins(bonusPaidRef.current > 0);
         setTimeout(() => setTreasurePrize(data.payout), 1800 + shift);
         setTimeout(() => {
@@ -339,7 +335,19 @@ export default function GameBoard() {
           setCoinBurst(burstSeq.current);
           setTimeout(() => setCoinBurst(null), 1700);
         }, 5200 + shift);
-        setTimeout(() => handlePlayAgain(), 7000 + shift);
+        // Tras el tesoro NO se reinicia sola: la cámara vuelve a las
+        // llaves con los valores de ESTA jugada visibles, y la escena
+        // se queda así hasta que el jugador pulse "Iniciar juego" (o
+        // toque una llave, que hace lo mismo).
+        setTimeout(() => {
+          bonusPaidRef.current = 0;
+          setGameStatus('IDLE');
+          setSessionId(null);
+          setCoinKeys(null);
+          setLockStatus('IDLE');
+          setRevealMap(hasReveal ? reveals : null);
+          refresh();
+        }, 7000 + shift);
         setTimeout(() => setWinBanner(null), 11_000 + shift);
       }
     } catch {
@@ -388,9 +396,13 @@ export default function GameBoard() {
       <GameScene
         lockStatus={lockStatus}
         keyStatuses={keyStatuses}
-        // Con la puerta abierta no se puede seguir tocando llaves
-        // (durante la revelación siguen visibles unos segundos)
-        interactive={isGameActive && !isLoading && lockStatus !== 'OPEN'}
+        // Con la puerta abierta no se puede tocar; en IDLE sí (tocar
+        // una llave arranca la jugada o abre el modal de tickets)
+        interactive={
+          !isLoading &&
+          lockStatus !== 'OPEN' &&
+          (isGameActive || (gameStatus === 'IDLE' && !!player))
+        }
         treasureVariant={treasureVariant}
         revealValues={revealMap}
         onKeyClick={handleKeyClick}
@@ -530,26 +542,20 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
-      {/* Idle state: jugar / comprar tickets. Con tickets y sin error
-          la partida arranca sola, así que no se muestra el botón. */}
-      {gameStatus === 'IDLE' && player && tickets > 0 && !error && (
-        <motion.div
-          className="idle-section"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          <p className="idle-cost loading-dots">🔑 Preparando tu partida…</p>
-        </motion.div>
-      )}
-      {gameStatus === 'IDLE' && !(player && tickets > 0 && !error) && (
+      {/* Idle: la partida NUNCA arranca sola — el jugador pulsa
+          "Iniciar juego" (o toca una llave). De fondo quedan las
+          llaves con los valores de la jugada anterior. */}
+      {gameStatus === 'IDLE' && (
         <motion.div
           className="idle-section"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
         >
-          <p className="idle-subtitle">
-            Encuentra las llaves con monedas ocultas y gana hasta <strong>$10.00</strong>
-          </p>
+          {!revealMap && (
+            <p className="idle-subtitle">
+              Encuentra las llaves con monedas ocultas y gana hasta <strong>$10.00</strong>
+            </p>
+          )}
           {player && (
             <p className="idle-cost">
               🎟️ Tienes <strong>{tickets}</strong> ticket{tickets !== 1 ? 's' : ''} · 1 partida = 1 ticket
@@ -567,7 +573,7 @@ export default function GameBoard() {
                 {isLoading || playerLoading ? (
                   <span className="loading-dots">Cargando...</span>
                 ) : tickets > 0 ? (
-                  <>🔑 Jugar — 1 ticket</>
+                  <>🔑 Iniciar juego — 1 ticket</>
                 ) : (
                   <>🎟️ Comprar tickets</>
                 )}
