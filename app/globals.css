@@ -148,6 +148,16 @@ h1, h2, h3 {
   color: var(--gold-1);
 }
 
+/* Contador de llaves con monedas ocultas (partida en curso) */
+.keys-badge-label {
+  font-size: 0.58rem;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: left;
+}
+
 .user-badge {
   display: flex;
   align-items: center;
@@ -297,15 +307,12 @@ h1, h2, h3 {
   filter: drop-shadow(0 0 20px rgba(245,197,24,0.4));
 }
 
-.vault-delta {
-  position: absolute;
-  top: 0;
-  right: -60px;
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--red-lose);
-  pointer-events: none;
+/* El saldo central destella VERDE mientras va sumando monedas */
+.vault-amount.balance-rising {
+  background: linear-gradient(135deg, #00ff87, #2bff9e);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 22px rgba(0, 255, 135, 0.45));
 }
 
 /* ============================================

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { PAYOUT_TABLE, TOTAL_KEYS, VAULT_SEQUENCE, VAULT_STEP } from '@/lib/game/constants';
+import { PAYOUT_TABLE, TOTAL_KEYS, VAULT_SEQUENCE, VAULT_STEP, coinKeysRemaining } from '@/lib/game/constants';
 
 interface TryKeyBody {
   session_id: string;
@@ -131,6 +131,8 @@ export async function POST(req: NextRequest) {
         vault: newVault,
         animation: 'KEY_BROKEN',
         game_over: gameOver,
+        // Llaves con monedas que le quedan a la partida (header)
+        coin_keys: gameOver ? 0 : coinKeysRemaining(targetPayout, updatedKeysTried.length),
         ...(bonus > 0 ? { bonus } : {}),
       });
     } else {
@@ -179,6 +181,7 @@ export async function POST(req: NextRequest) {
         // los fallos): el cliente suma esto, no el premio completo.
         credited: remainder,
         animation: 'LOCK_OPENED',
+        coin_keys: 0,
       });
     }
   } catch (err) {

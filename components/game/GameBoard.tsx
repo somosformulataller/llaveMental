@@ -4,11 +4,12 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import GameScene from './GameScene';
-import VaultCounter from './VaultCounter';
+import BalanceCounter from './BalanceCounter';
 import BuyTicketsModal from '@/components/payments/BuyTicketsModal';
 import { usePlayer } from '@/components/providers/PlayerProvider';
+import { setCoinKeys } from '@/lib/game/coinKeysStore';
 import { GameStatus, KeyStatus, LockStatus } from '@/types/game';
-import { TOTAL_KEYS, INITIAL_VAULT } from '@/lib/game/constants';
+import { TOTAL_KEYS } from '@/lib/game/constants';
 
 // Premios de motivación tras las llaves NO volteadas, revelados al
 // terminar. Solo visuales y siempre POR DEBAJO del premio real de la
@@ -42,7 +43,6 @@ export default function GameBoard() {
   // Game state
   const [gameStatus, setGameStatus] = useState<GameStatus>('IDLE');
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [vault, setVault] = useState(INITIAL_VAULT);
   const [keyStatuses, setKeyStatuses] = useState<KeyStatus[]>(
     Array(TOTAL_KEYS).fill('IDLE')
   );
@@ -62,9 +62,6 @@ export default function GameBoard() {
   const [treasureCoins, setTreasureCoins] = useState(false);
   // Revelación final: qué "escondían" las llaves no volteadas
   const [revealMap, setRevealMap] = useState<(number | null)[] | null>(null);
-  const [isDecreasing, setIsDecreasing] = useState(false);
-  // Cuánto bajó el pozo en el último fallo (escalera variable)
-  const [vaultDrop, setVaultDrop] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [buyOpen, setBuyOpen] = useState(false);
@@ -112,13 +109,14 @@ export default function GameBoard() {
     });
   }, [playTone]);
 
-  // Restaura una partida con su estado real: pozo y llaves probadas
-  const resumeSession = useCallback((id: string, vaultValue: number, keysTried: number[]) => {
+  // Restaura una partida con su estado real: llaves probadas y cuántas
+  // llaves con monedas ocultas le quedan (contador del header)
+  const resumeSession = useCallback((id: string, keysTried: number[], coinKeys?: number) => {
     bonusPaidRef.current = 0;
     setSessionId(id);
-    setVault(vaultValue);
     setGameStatus('ACTIVE');
     setLockStatus('IDLE');
+    setCoinKeys(typeof coinKeys === 'number' ? coinKeys : null);
     setKeyStatuses(() => {
       const next: KeyStatus[] = Array(TOTAL_KEYS).fill('IDLE');
       for (const k of keysTried) {
@@ -128,6 +126,10 @@ export default function GameBoard() {
     });
   }, []);
 
+  // Al salir de la pantalla de juego el contador del header vuelve a
+  // mostrar el saldo (la partida sigue guardada en el servidor).
+  useEffect(() => () => setCoinKeys(null), []);
+
   // Al entrar al juego: si hay una partida activa, se reanuda sola.
   // El jugador puede salir de la app y volver cuando quiera.
   useEffect(() => {
@@ -136,7 +138,7 @@ export default function GameBoard() {
       .then((r) => r.json())
       .then((data) => {
         if (cancelled || !data.session) return;
-        resumeSession(data.session.session_id, data.session.vault, data.session.keys_tried);
+        resumeSession(data.session.session_id, data.session.keys_tried, data.session.coin_keys);
       })
       .catch(() => {})
       .finally(() => {
@@ -168,7 +170,7 @@ export default function GameBoard() {
       if (!res.ok) {
         if (res.status === 409 && data.session_id) {
           // Reanudar la partida existente con su estado completo
-          resumeSession(data.session_id, data.vault ?? INITIAL_VAULT, data.keys_tried ?? []);
+          resumeSession(data.session_id, data.keys_tried ?? [], data.coin_keys);
           return;
         }
         if (data.code === 'NO_TICKETS') {
@@ -181,10 +183,10 @@ export default function GameBoard() {
 
       bonusPaidRef.current = 0;
       setSessionId(data.session_id);
-      setVault(data.vault);
       setGameStatus('ACTIVE');
       setKeyStatuses(Array(TOTAL_KEYS).fill('IDLE'));
       setLockStatus('IDLE');
+      setCoinKeys(typeof data.coin_keys === 'number' ? data.coin_keys : null);
       if (typeof data.tickets === 'number') updatePlayer({ tickets: data.tickets });
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
@@ -234,9 +236,9 @@ export default function GameBoard() {
           // quedó vieja): volver al inicio en limpio, sin trabarse.
           setGameStatus('IDLE');
           setSessionId(null);
-          setVault(INITIAL_VAULT);
           setKeyStatuses(Array(TOTAL_KEYS).fill('IDLE'));
           setLockStatus('IDLE');
+          setCoinKeys(null);
           refresh();
           return;
         }
@@ -260,13 +262,11 @@ export default function GameBoard() {
         // Con monedas la cerradura destella VERDE (no fue un error);
         // sin monedas, el rojo clásico de llave incorrecta.
         setLockStatus(data.bonus ? 'COINS' : 'SHAKE');
-        setIsDecreasing(true);
-        setVaultDrop(Math.max(0, Math.round((vault - data.vault) * 100) / 100));
-        setVault(data.vault);
+        // La llave con monedas encontrada se descuenta del contador
+        if (typeof data.coin_keys === 'number') setCoinKeys(data.coin_keys);
 
         setTimeout(() => {
           setLockStatus('IDLE');
-          setIsDecreasing(false);
         }, 800);
 
         // Monedas ocultas: este fallo soltó un adelanto del premio.
@@ -299,7 +299,8 @@ export default function GameBoard() {
           return next;
         });
         setLockStatus('OPEN');
-        setVault(data.payout);
+        // La llave que abre era la última con monedas: contador a 0
+        setCoinKeys(0);
 
         // Revelar qué "escondían" las llaves no volteadas (montos
         // siempre menores al premio real). La cámara espera mientras
@@ -350,7 +351,7 @@ export default function GameBoard() {
     bonusPaidRef.current = 0;
     setGameStatus('IDLE');
     setSessionId(null);
-    setVault(INITIAL_VAULT);
+    setCoinKeys(null);
     setKeyStatuses(Array(TOTAL_KEYS).fill('IDLE'));
     setLockStatus('IDLE');
     setTreasurePrize(null);
@@ -441,9 +442,9 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
-      {/* UI superpuesta — arriba: el premio */}
+      {/* UI superpuesta — arriba: el SALDO en grande, sumando en vivo */}
       <div className="game-overlay game-overlay-top">
-        <VaultCounter amount={vault} isDecreasing={isDecreasing} delta={vaultDrop ?? undefined} />
+        {player && <BalanceCounter amount={player.balance} />}
         <AnimatePresence>
           {winBanner !== null && (
             <motion.div

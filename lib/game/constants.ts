@@ -55,3 +55,15 @@ export const PAYOUT_TABLE: PayoutTier[] = [
 ];
 
 export const TOTAL_WEIGHT = PAYOUT_TABLE.reduce((sum, t) => sum + t.weight, 0);
+
+// Llaves con monedas ocultas que le QUEDAN a la partida: los adelantos
+// aún no cobrados + la llave que abre la puerta (también paga). Es lo
+// que ve el jugador en el header — la narrativa es "encuentra las
+// llaves con monedas", no "el premio baja".
+export function coinKeysRemaining(targetPayout: number, failsSoFar: number): number {
+  const tier = PAYOUT_TABLE.find((t) => t.payout === targetPayout);
+  // Sesiones selladas con tablas viejas: sin adelantos, solo la puerta
+  if (!tier) return targetPayout > 0 ? 1 : 0;
+  const pending = (tier.advances ?? []).filter((a) => a.fail > failsSoFar).length;
+  return pending + 1;
+}

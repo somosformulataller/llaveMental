@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion, useSpring, useTransform } from 'framer-motion';
 import { usePlayer } from '@/components/providers/PlayerProvider';
+import { useCoinKeys } from '@/lib/game/coinKeysStore';
 import NotificationsBell from './NotificationsBell';
 
 // Saldo como CONTADOR: al ganar monedas o premios el número va
@@ -41,12 +42,49 @@ function AnimatedBalance({ value }: { value: number }) {
   );
 }
 
+// Contador de llaves con monedas ocultas de la partida en curso:
+// cada vez que el jugador encuentra una, el número baja con un pulso
+// dorado. Sustituye al saldo del header mientras hay partida (el
+// saldo se ve en grande en el centro de la escena).
+function CoinKeysBadge({ count }: { count: number }) {
+  const [pulse, setPulse] = useState(false);
+  const prev = useRef(count);
+
+  useEffect(() => {
+    if (count !== prev.current) {
+      prev.current = count;
+      setPulse(true);
+      const t = setTimeout(() => setPulse(false), 900);
+      return () => clearTimeout(t);
+    }
+  }, [count]);
+
+  return (
+    <div className="wallet-badge keys-badge" title="Llaves con monedas ocultas disponibles">
+      <span className="wallet-icon">🗝️</span>
+      <motion.span
+        className="wallet-amount"
+        animate={pulse ? { scale: 1.35, color: '#00ff87' } : { scale: 1, color: '#f5c518' }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+      >
+        {count}
+      </motion.span>
+      <span className="keys-badge-label">
+        con monedas
+        <br />
+        ocultas
+      </span>
+    </div>
+  );
+}
+
 // Header en una sola fila: desplegable de navegación (UI propia),
 // contadores de tickets y saldo actuales, y la campanita de
 // notificaciones. El canje de tickets vive en la barra inferior
 // (RedeemBar) y Salir es la última opción del desplegable.
 export default function Header() {
   const { player, isLoading, isAdmin, signOut } = usePlayer();
+  const coinKeys = useCoinKeys();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -154,10 +192,16 @@ export default function Header() {
                 <span className="wallet-icon">🎟️</span>
                 <span className="wallet-amount">{player.tickets ?? 0}</span>
               </Link>
-              <Link href="/billetera" className="wallet-badge" prefetch>
-                <span className="wallet-icon">💰</span>
-                <AnimatedBalance value={player.balance} />
-              </Link>
+              {/* Con partida en curso: contador de llaves con monedas
+                  ocultas (el saldo se ve en grande en la escena) */}
+              {coinKeys !== null ? (
+                <CoinKeysBadge count={coinKeys} />
+              ) : (
+                <Link href="/billetera" className="wallet-badge" prefetch>
+                  <span className="wallet-icon">💰</span>
+                  <AnimatedBalance value={player.balance} />
+                </Link>
+              )}
             </div>
           )}
 

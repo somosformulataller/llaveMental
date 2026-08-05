@@ -28,6 +28,8 @@ export interface GameSession {
 export interface BuyTicketResponse {
   session_id: string;
   vault: number;
+  /** Llaves con monedas ocultas de la partida (adelantos + la puerta) */
+  coin_keys?: number;
   error?: string;
 }
 
@@ -41,6 +43,8 @@ export interface TryKeyResponse {
   bonus?: number;
   animation: 'KEY_BROKEN' | 'LOCK_OPENED';
   game_over?: boolean;
+  /** Llaves con monedas ocultas que le quedan a la partida */
+  coin_keys?: number;
   error?: string;
 }
 
@@ -115,6 +119,7 @@ export interface ActiveSessionState {
   session_id: string;
   vault: number;
   keys_tried: number[];
+  coin_keys?: number;
 }
 
 export interface InteractionRow {

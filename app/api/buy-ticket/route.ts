@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
 import { BLOCKED_MESSAGE, isBlocked } from '@/lib/supabase/blocked';
 import { drawPayoutTier, drawWinningTier } from '@/lib/game/rng';
-import { INITIAL_VAULT } from '@/lib/game/constants';
+import { INITIAL_VAULT, coinKeysRemaining } from '@/lib/game/constants';
 
 // Inicia una partida consumiendo 1 ticket. La lógica RTP/RNG no
 // cambia: el destino de la partida se sella aquí con drawPayoutTier
@@ -58,18 +58,20 @@ export async function POST() {
     //    (pozo real y llaves probadas), no se cobra otro ticket.
     const { data: existingSession } = await supabase
       .from('game_sessions')
-      .select('id, current_vault, keys_tried')
+      .select('id, current_vault, keys_tried, target_payout')
       .eq('player_id', user.id)
       .eq('game_status', 'ACTIVE')
       .maybeSingle();
 
     if (existingSession) {
+      const resumedKeys: number[] = existingSession.keys_tried ?? [];
       return NextResponse.json(
         {
           error: 'Ya tienes una partida activa',
           session_id: existingSession.id,
           vault: Number(existingSession.current_vault),
-          keys_tried: existingSession.keys_tried ?? [],
+          keys_tried: resumedKeys,
+          coin_keys: coinKeysRemaining(Number(existingSession.target_payout), resumedKeys.length),
         },
         { status: 409 }
       );
@@ -149,6 +151,8 @@ export async function POST() {
       session_id: session.id,
       vault: INITIAL_VAULT,
       tickets: Number(remainingTickets),
+      // Llaves con monedas ocultas de esta partida (adelantos + puerta)
+      coin_keys: coinKeysRemaining(payoutTier.payout, 0),
     });
   } catch (err) {
     console.error('buy-ticket error:', err);
