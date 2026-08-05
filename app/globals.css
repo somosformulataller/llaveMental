@@ -1323,7 +1323,8 @@ a.wallet-badge {
   padding: 8px 12px;
   border-radius: var(--radius-md);
   cursor: pointer;
-  max-width: 200px;
+  /* Sin max-width: "Comprar Tickets" se lee SIEMPRE completo; si no
+     cabe, la fila del header envuelve antes que recortar el texto */
   min-width: 0;
   transition: all 0.15s;
 }
@@ -2050,7 +2051,7 @@ select.ref-input { appearance: auto; }
   .wallet-amount { font-size: 0.95rem; }
   /* Sin espacio para la etiqueta: queda "🗝️ N" (tooltip + pulso) */
   .keys-badge-label { display: none; }
-  .header-select { font-size: 0.8rem; padding: 7px 8px; max-width: 150px; }
+  .header-select { font-size: 0.8rem; padding: 7px 8px; }
   .btn-mini.btn-gold { padding: 6px 9px; font-size: 0.72rem; }
   .stepper-qty { min-width: 34px; font-size: 0.85rem; }
   .redeem-hint { font-size: 0.68rem; }
@@ -2059,7 +2060,7 @@ select.ref-input { appearance: auto; }
 @media (max-width: 480px) {
   .wallet-grid { grid-template-columns: 1fr; }
   .wallet-badge { padding: 4px 8px; }
-  .header-select { max-width: 118px; }
+  .header-select { font-size: 0.75rem; padding: 7px 7px; gap: 5px; }
   .bell-btn { width: 32px; height: 32px; font-size: 0.95rem; }
 }
 
