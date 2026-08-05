@@ -118,6 +118,8 @@ h1, h2, h3 {
   gap: var(--space-sm);
   width: 100%;
   min-width: 0;
+  /* Si aun así no cabe, la fila envuelve antes que superponerse */
+  flex-wrap: wrap;
 }
 /* Sin sesión: solo el botón de entrar, alineado a la derecha */
 .header-row.header-row-end { justify-content: flex-end; }
@@ -127,6 +129,7 @@ h1, h2, h3 {
   align-items: center;
   gap: var(--space-sm);
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .wallet-badge {
@@ -137,6 +140,8 @@ h1, h2, h3 {
   border: 1px solid var(--border-gold);
   padding: 6px 14px;
   border-radius: var(--radius-xl);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .wallet-icon { font-size: 1rem; }
@@ -149,6 +154,8 @@ h1, h2, h3 {
 }
 
 /* Contador de llaves con monedas ocultas (partida en curso) */
+.keys-badge { gap: 6px; }
+
 .keys-badge-label {
   font-size: 0.58rem;
   line-height: 1.15;
@@ -2037,8 +2044,12 @@ select.ref-input { appearance: auto; }
 @media (max-width: 640px) {
   .header-nav { gap: 4px; }
   .nav-link { font-size: 0.8rem; padding: 4px 8px; }
+  .header-row { gap: 6px; }
+  .header-badges { gap: 6px; }
   .wallet-badge { padding: 4px 10px; }
   .wallet-amount { font-size: 0.95rem; }
+  /* Sin espacio para la etiqueta: queda "🗝️ N" (tooltip + pulso) */
+  .keys-badge-label { display: none; }
   .header-select { font-size: 0.8rem; padding: 7px 8px; max-width: 150px; }
   .btn-mini.btn-gold { padding: 6px 9px; font-size: 0.72rem; }
   .stepper-qty { min-width: 34px; font-size: 0.85rem; }
@@ -2047,6 +2058,9 @@ select.ref-input { appearance: auto; }
 
 @media (max-width: 480px) {
   .wallet-grid { grid-template-columns: 1fr; }
+  .wallet-badge { padding: 4px 8px; }
+  .header-select { max-width: 118px; }
+  .bell-btn { width: 32px; height: 32px; font-size: 0.95rem; }
 }
 
 /* ── Panel admin: menú lateral + acciones de jugador ── */
