@@ -592,7 +592,7 @@ export default function GameBoard() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          🗝️ Toca una llave para intentar abrir la cerradura
+          🪙 Toca una llave para sumar monedas a tu saldo
         </motion.p>
       )}
       </div>
