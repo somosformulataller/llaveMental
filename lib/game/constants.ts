@@ -16,42 +16,40 @@ export const VAULT_SEQUENCE = [
   10, 9.5, 9, 8, 7, 6, 5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.5,
 ];
 
-// Distribución con premio de consolación, aprobada el 01/08/2026 (ver
-// rtp-propuesta.md): la puerta SIEMPRE abre — no existe la derrota
-// total. E[premio] = $1.96 exacto → RTP 98.0%.
-// requiredErrors = posición del premio en VAULT_SEQUENCE: la puerta
-// abre con el pozo marcando EXACTO el premio. El $10 abre con la
-// PRIMERA llave: momento jackpot.
+// Distribución "SIEMPRE gana" del 05/08/2026 (ver rtp-propuesta.md,
+// actualización 10): NO existen llaves incorrectas. Cada partida son
+// exactamente 5 llaves con monedas ocultas que suman el premio EXACTO:
+// los toques 1-4 sueltan un adelanto cada uno (da igual qué llave
+// toque el jugador) y el 5° abre la puerta con el monto final, el más
+// grande. Nada de rojo, temblor ni sonido de error.
 //
-// `advances` reparte CADA premio en varias llaves ("monedas ocultas"):
-// el fallo n° indicado suelta ese monto al saldo en el momento, y la
-// puerta paga al final el premio MENOS lo adelantado. El total por
-// partida no cambia ni un centavo → RTP intacto. Todos los montos en
-// centavos exactos (la columna balance es DECIMAL(10,2)).
-// Pesos calibrados POR SIMULACIÓN (5M de partidas) el 01/08/2026 junto
-// con la regla CORTA-RACHAS de buy-ticket: nunca 3 consolaciones
-// seguidas (si el sorteo da $0.50 y las últimas 2 partidas del jugador
-// fueron $0.50, se resortea entre $2.50+). Resultado global: RTP
-// 98.1%, consolación efectiva 34.7%, ganar $2.50+ en 65.3% de las
-// partidas y racha máxima de consolaciones = 2.
+// El RTP/RNG NO cambia: el premio total por partida sale del MISMO
+// sorteo (drawPayoutTier + corta-rachas de buy-ticket: nunca 3
+// consolaciones seguidas) con los mismos pesos calibrados por
+// simulación (5M de partidas): RTP 98.1%, consolación efectiva 34.7%,
+// $2.50+ en 65.3% de las partidas. Solo cambia CÓMO se reparte el
+// premio en pantalla. Montos en centavos exactos (balance es
+// DECIMAL(10,2)), crecientes para que la emoción suba hasta la puerta.
+// requiredErrors = 4 → la puerta abre SIEMPRE en el 5° toque.
 export const PAYOUT_TABLE: PayoutTier[] = [
-  { payout: 0.5, requiredErrors: 14, weight: 385,
-    advances: [{ fail: 5, amount: 0.15 }, { fail: 10, amount: 0.15 }] },          // puerta: 0.20
-  { payout: 2.5, requiredErrors: 10, weight: 499,
-    advances: [{ fail: 3, amount: 0.5 }, { fail: 6, amount: 0.5 }, { fail: 8, amount: 0.75 }] },  // puerta: 0.75
-  { payout: 3,   requiredErrors: 9,  weight: 76,
-    advances: [{ fail: 3, amount: 0.5 }, { fail: 5, amount: 0.75 }, { fail: 7, amount: 0.75 }] }, // puerta: 1.00
-  { payout: 3.5, requiredErrors: 8,  weight: 14,
-    advances: [{ fail: 2, amount: 0.5 }, { fail: 4, amount: 0.75 }, { fail: 6, amount: 1 }] },    // puerta: 1.25
-  { payout: 4,   requiredErrors: 7,  weight: 9,
-    advances: [{ fail: 2, amount: 0.75 }, { fail: 4, amount: 0.75 }, { fail: 6, amount: 1 }] },   // puerta: 1.50
-  { payout: 5,   requiredErrors: 6,  weight: 8,
-    advances: [{ fail: 2, amount: 1 }, { fail: 4, amount: 1.5 }] },               // puerta: 2.50
-  { payout: 6,   requiredErrors: 5,  weight: 5,
-    advances: [{ fail: 2, amount: 1.25 }, { fail: 4, amount: 1.75 }] },           // puerta: 3.00
-  { payout: 8,   requiredErrors: 3,  weight: 4,
-    advances: [{ fail: 2, amount: 2 }] },                                          // puerta: 6.00
-  { payout: 10,  requiredErrors: 0,  weight: 3 },                                  // puerta: 10.00
+  { payout: 0.5, requiredErrors: 4, weight: 385,
+    advances: [{ fail: 1, amount: 0.05 }, { fail: 2, amount: 0.05 }, { fail: 3, amount: 0.1 }, { fail: 4, amount: 0.1 }] },     // puerta: 0.20
+  { payout: 2.5, requiredErrors: 4, weight: 499,
+    advances: [{ fail: 1, amount: 0.25 }, { fail: 2, amount: 0.5 }, { fail: 3, amount: 0.5 }, { fail: 4, amount: 0.5 }] },      // puerta: 0.75
+  { payout: 3,   requiredErrors: 4, weight: 76,
+    advances: [{ fail: 1, amount: 0.5 }, { fail: 2, amount: 0.5 }, { fail: 3, amount: 0.5 }, { fail: 4, amount: 0.75 }] },      // puerta: 0.75
+  { payout: 3.5, requiredErrors: 4, weight: 14,
+    advances: [{ fail: 1, amount: 0.5 }, { fail: 2, amount: 0.5 }, { fail: 3, amount: 0.75 }, { fail: 4, amount: 0.75 }] },     // puerta: 1.00
+  { payout: 4,   requiredErrors: 4, weight: 9,
+    advances: [{ fail: 1, amount: 0.5 }, { fail: 2, amount: 0.75 }, { fail: 3, amount: 0.75 }, { fail: 4, amount: 0.75 }] },    // puerta: 1.25
+  { payout: 5,   requiredErrors: 4, weight: 8,
+    advances: [{ fail: 1, amount: 0.75 }, { fail: 2, amount: 0.75 }, { fail: 3, amount: 1 }, { fail: 4, amount: 1 }] },         // puerta: 1.50
+  { payout: 6,   requiredErrors: 4, weight: 5,
+    advances: [{ fail: 1, amount: 0.75 }, { fail: 2, amount: 1 }, { fail: 3, amount: 1.25 }, { fail: 4, amount: 1.25 }] },      // puerta: 1.75
+  { payout: 8,   requiredErrors: 4, weight: 4,
+    advances: [{ fail: 1, amount: 1 }, { fail: 2, amount: 1.5 }, { fail: 3, amount: 1.5 }, { fail: 4, amount: 1.75 }] },        // puerta: 2.25
+  { payout: 10,  requiredErrors: 4, weight: 3,
+    advances: [{ fail: 1, amount: 1.5 }, { fail: 2, amount: 1.75 }, { fail: 3, amount: 2 }, { fail: 4, amount: 2.25 }] },       // puerta: 2.50
 ];
 
 export const TOTAL_WEIGHT = PAYOUT_TABLE.reduce((sum, t) => sum + t.weight, 0);

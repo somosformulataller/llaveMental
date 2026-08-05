@@ -258,8 +258,9 @@ export default function GameBoard() {
       }
 
       if (data.animation === 'KEY_BROKEN') {
-        // FAIL animation
-        playErrorSound();
+        // Con monedas NO es un error: nada de sonido de fallo (solo
+        // queda para sesiones viejas selladas sin adelantos).
+        if (!data.bonus) playErrorSound();
         setKeyStatuses((prev) => {
           const next = [...prev];
           next[keyId] = 'BROKEN';
@@ -547,7 +548,7 @@ export default function GameBoard() {
           animate={{ opacity: 1, scale: 1 }}
         >
           <p className="idle-subtitle">
-            Elige la llave correcta y gana hasta <strong>$10.00</strong>
+            Encuentra las llaves con monedas ocultas y gana hasta <strong>$10.00</strong>
           </p>
           {player && (
             <p className="idle-cost">
