@@ -1673,6 +1673,12 @@ a.wallet-badge {
   outline: none;
   border-color: var(--gold-1);
 }
+/* Campo bloqueado (p. ej. cédula del registro): se ve, no se edita */
+input.ref-input[readonly] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  border-style: dashed;
+}
 select.ref-input { appearance: auto; }
 
 /* Pista bajo el campo de referencia (acepta últimos 6 dígitos) */

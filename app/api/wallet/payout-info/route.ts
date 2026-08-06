@@ -20,10 +20,20 @@ export async function POST(req: NextRequest) {
     const body: PayoutInfoBody = await req.json();
     const clamp = (v: unknown) => String(v ?? '').trim().slice(0, 80);
 
+    // La cédula de cobro es SIEMPRE la del registro (identidad fija):
+    // lo que mande el cliente solo cuenta para cuentas viejas creadas
+    // antes de que el registro pidiera cédula.
+    const { data: me } = await supabase
+      .from('players')
+      .select('cedula')
+      .eq('id', user.id)
+      .single();
+    const cedula = me?.cedula?.trim() ? me.cedula.trim() : clamp(body.cedula);
+
     const { error } = await supabase.rpc('save_payout_info', {
       p_name: clamp(body.name),
       p_bank: clamp(body.bank),
-      p_cedula: clamp(body.cedula),
+      p_cedula: cedula,
       p_phone: clamp(body.phone),
     });
 

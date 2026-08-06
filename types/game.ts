@@ -58,6 +58,9 @@ export interface Player {
   total_wagered: number;
   total_won: number;
   role?: PlayerRole;
+  /** Cédula del REGISTRO: fija la identidad; el campo de cobro se
+      bloquea cuando existe */
+  cedula?: string | null;
   payout_name?: string | null;
   payout_bank?: string | null;
   payout_cedula?: string | null;

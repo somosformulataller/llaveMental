@@ -46,6 +46,9 @@ export default function WalletPanel() {
   // Datos de cobro
   const [payoutForm, setPayoutForm] = useState({ name: '', bank: '', cedula: '', phone: '' });
   const [savingPayout, setSavingPayout] = useState(false);
+  // Cédula del REGISTRO: si existe, el campo queda bloqueado (la
+  // identidad no se cambia después de registrarse)
+  const [registeredCedula, setRegisteredCedula] = useState<string | null>(null);
 
   const [checking, setChecking] = useState(false);
 
@@ -58,10 +61,14 @@ export default function WalletPanel() {
         setPurchases(data.purchases ?? []);
         setWithdrawals(data.withdrawals ?? []);
         if (data.player) {
+          const fromRegistration = data.player.cedula ?? null;
+          setRegisteredCedula(fromRegistration);
           setPayoutForm({
             name: data.player.payout_name ?? '',
             bank: data.player.payout_bank ?? '',
-            cedula: data.player.payout_cedula ?? '',
+            // La cédula del registro manda; el campo editable solo
+            // aplica a cuentas viejas registradas sin cédula
+            cedula: fromRegistration || (data.player.payout_cedula ?? ''),
             phone: data.player.payout_phone ?? '',
           });
         }
@@ -370,7 +377,19 @@ export default function WalletPanel() {
               placeholder="Cédula (Ej: V-12345678)"
               value={payoutForm.cedula}
               onChange={(e) => setPayoutForm((f) => ({ ...f, cedula: e.target.value }))}
+              readOnly={!!registeredCedula}
+              title={
+                registeredCedula
+                  ? 'La cédula es la de tu registro y no se puede cambiar'
+                  : undefined
+              }
             />
+            {registeredCedula && (
+              <p className="ref-hint">
+                🔒 Tu cédula viene de tu registro y no se puede editar. Si hay un
+                error, escríbenos por el chat de atención.
+              </p>
+            )}
             <input
               className="ref-input"
               placeholder="Teléfono (Ej: 04121234567)"
