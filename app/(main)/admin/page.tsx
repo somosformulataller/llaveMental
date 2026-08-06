@@ -78,7 +78,12 @@ export default function AdminPage() {
   const [userSearch, setUserSearch] = useState('');
   const [flowPlayer, setFlowPlayer] = useState<string | null>(null);
   const [flowEvents, setFlowEvents] = useState<AppEventRow[]>([]);
-  const [purchaseFilter, setPurchaseFilter] = useState<'pendientes' | 'todas'>('pendientes');
+  const [purchaseFilter, setPurchaseFilter] = useState<
+    'pendientes' | 'aprobadas' | 'rechazadas' | 'todas'
+  >('pendientes');
+  const [withdrawalFilter, setWithdrawalFilter] = useState<
+    'pendientes' | 'pagados' | 'cancelados' | 'todos'
+  >('pendientes');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [openDetail, setOpenDetail] = useState<{
@@ -254,12 +259,24 @@ export default function AdminPage() {
     ) : null;
 
   const stats = data?.stats;
-  const visiblePurchases =
-    purchaseFilter === 'pendientes'
-      ? purchases.filter((p) => p.status !== 'aprobado')
-      : purchases;
+  // Cada compra vive en SU filtro: al aprobar o rechazar una pendiente
+  // pasa de lista ("validando" cuenta como pendiente: es transitorio).
+  const purchaseBuckets = {
+    pendientes: purchases.filter((p) => p.status === 'pendiente' || p.status === 'validando'),
+    aprobadas: purchases.filter((p) => p.status === 'aprobado'),
+    rechazadas: purchases.filter((p) => p.status === 'rechazado'),
+    todas: purchases,
+  } as const;
+  const visiblePurchases = purchaseBuckets[purchaseFilter];
   const pendingWithdrawals = withdrawals.filter((w) => w.status === 'pendiente');
   const otherWithdrawals = withdrawals.filter((w) => w.status !== 'pendiente');
+  const withdrawalBuckets = {
+    pendientes: pendingWithdrawals,
+    pagados: withdrawals.filter((w) => w.status === 'pagado'),
+    cancelados: withdrawals.filter((w) => w.status === 'cancelado'),
+    todos: [...pendingWithdrawals, ...otherWithdrawals],
+  } as const;
+  const visibleWithdrawals = withdrawalBuckets[withdrawalFilter];
 
   const q = userSearch.trim().toLowerCase();
   const visibleUsers = q
@@ -444,13 +461,25 @@ export default function AdminPage() {
                     className={`btn-mini ${purchaseFilter === 'pendientes' ? 'btn-mini-active' : ''}`}
                     onClick={() => setPurchaseFilter('pendientes')}
                   >
-                    Pendientes
+                    🕒 Pendientes ({purchaseBuckets.pendientes.length})
+                  </button>
+                  <button
+                    className={`btn-mini ${purchaseFilter === 'aprobadas' ? 'btn-mini-active' : ''}`}
+                    onClick={() => setPurchaseFilter('aprobadas')}
+                  >
+                    ✅ Aprobadas ({purchaseBuckets.aprobadas.length})
+                  </button>
+                  <button
+                    className={`btn-mini ${purchaseFilter === 'rechazadas' ? 'btn-mini-active' : ''}`}
+                    onClick={() => setPurchaseFilter('rechazadas')}
+                  >
+                    ❌ Rechazadas ({purchaseBuckets.rechazadas.length})
                   </button>
                   <button
                     className={`btn-mini ${purchaseFilter === 'todas' ? 'btn-mini-active' : ''}`}
                     onClick={() => setPurchaseFilter('todas')}
                   >
-                    Todas
+                    Todas ({purchases.length})
                   </button>
                   <span className="admin-hint">
                     La validación automática nunca rechaza: rechazar es siempre decisión tuya.
@@ -528,7 +557,10 @@ export default function AdminPage() {
                       ))}
                       {visiblePurchases.length === 0 && (
                         <tr>
-                          <td colSpan={7}>Sin compras {purchaseFilter === 'pendientes' ? 'pendientes' : ''}</td>
+                          <td colSpan={7}>
+                            Sin compras{' '}
+                            {purchaseFilter === 'todas' ? 'todavía' : purchaseFilter}
+                          </td>
                         </tr>
                       )}
                     </tbody>
@@ -541,6 +573,32 @@ export default function AdminPage() {
                 <p className="admin-hint">
                   Paga por Pago Móvil a los datos del jugador y luego marca el retiro como pagado.
                 </p>
+                <div className="admin-filter-row">
+                  <button
+                    className={`btn-mini ${withdrawalFilter === 'pendientes' ? 'btn-mini-active' : ''}`}
+                    onClick={() => setWithdrawalFilter('pendientes')}
+                  >
+                    🕒 Pendientes ({withdrawalBuckets.pendientes.length})
+                  </button>
+                  <button
+                    className={`btn-mini ${withdrawalFilter === 'pagados' ? 'btn-mini-active' : ''}`}
+                    onClick={() => setWithdrawalFilter('pagados')}
+                  >
+                    ✅ Pagados ({withdrawalBuckets.pagados.length})
+                  </button>
+                  <button
+                    className={`btn-mini ${withdrawalFilter === 'cancelados' ? 'btn-mini-active' : ''}`}
+                    onClick={() => setWithdrawalFilter('cancelados')}
+                  >
+                    ↩️ Cancelados ({withdrawalBuckets.cancelados.length})
+                  </button>
+                  <button
+                    className={`btn-mini ${withdrawalFilter === 'todos' ? 'btn-mini-active' : ''}`}
+                    onClick={() => setWithdrawalFilter('todos')}
+                  >
+                    Todos ({withdrawals.length})
+                  </button>
+                </div>
                 <div className="admin-table-wrap">
                   <table className="admin-table">
                     <thead>
@@ -554,7 +612,7 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {[...pendingWithdrawals, ...otherWithdrawals].map((w) => (
+                      {visibleWithdrawals.map((w) => (
                         <Fragment key={w.id}>
                         <tr>
                           <td>{fmtDate(w.created_at)}</td>
@@ -603,9 +661,11 @@ export default function AdminPage() {
                         {detailRow(w.id, 6)}
                         </Fragment>
                       ))}
-                      {withdrawals.length === 0 && (
+                      {visibleWithdrawals.length === 0 && (
                         <tr>
-                          <td colSpan={6}>Sin retiros todavía</td>
+                          <td colSpan={6}>
+                            Sin retiros {withdrawalFilter === 'todos' ? 'todavía' : withdrawalFilter}
+                          </td>
                         </tr>
                       )}
                     </tbody>
