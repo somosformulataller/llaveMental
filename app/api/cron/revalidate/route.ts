@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePendingPurchases } from '@/lib/payments/backgroundRevalidate';
 
-// Cron de Vercel (ver vercel.json): reintenta las compras pendientes
-// contra el banco aunque NO haya ningún usuario conectado. Vercel
-// manda el header Authorization con CRON_SECRET automáticamente.
+// Cron EXTERNO (p. ej. cron-job.org cada 5 min): reintenta las compras
+// pendientes contra el banco aunque NO haya ningún usuario conectado.
+// Autenticación: header "Authorization: Bearer CRON_SECRET" (crons de
+// Vercel) o "?key=CRON_SECRET" (servicios externos). La URL con el
+// secreto está en credenciales.md.
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
-  if (secret && req.headers.get('authorization') !== `Bearer ${secret}`) {
+  const authorized =
+    !secret ||
+    req.headers.get('authorization') === `Bearer ${secret}` ||
+    req.nextUrl.searchParams.get('key') === secret;
+  if (!authorized) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
   const approved = await revalidatePendingPurchases(true);
