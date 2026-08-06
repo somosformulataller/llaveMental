@@ -248,11 +248,11 @@ export default function BuyTicketsModal({ open, onClose, onApproved }: BuyTicket
             {phase === 'pendiente' && (
               <div className="buy-status">
                 <div className="modal-icon">🕒</div>
-                <h2 className="modal-title">Pago en revisión</h2>
+                <h2 className="modal-title">Verificando tu pago</h2>
                 <p className="modal-subtitle">
-                  {message ?? 'Tu pago quedó en revisión.'} Te sumaremos los tickets apenas se
-                  confirme: puedes tocar «Verificar de nuevo», o cerrar — también se actualizará
-                  solo.
+                  {message ?? 'Tu pago se está verificando.'} Apenas se confirme te llegará una
+                  notificación 🔔 y tus tickets se sumarán automáticamente. Puedes cerrar esta
+                  ventana con tranquilidad, o tocar «Verificar de nuevo» si quieres.
                 </p>
                 <button className="btn-primary" onClick={handleRecheck} disabled={checking}>
                   {checking ? 'Verificando…' : 'Verificar de nuevo'}

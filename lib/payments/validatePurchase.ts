@@ -13,8 +13,8 @@ const PENDING_REASONS: Record<string, string> = {
   not_found: 'El banco aún no refleja el pago (suele tardar 1–2 minutos).',
   amount_mismatch: 'El monto pagado no coincide con el esperado. Un administrador lo revisará.',
   amount_unknown: 'No había tasa BCV al registrar la compra. Un administrador la revisará.',
-  retryable: 'El banco no respondió. Se reintentará automáticamente.',
-  error: 'No se pudo validar automáticamente. Quedó en revisión.',
+  retryable: 'El banco está tardando en responder — seguimos verificando tu pago en segundo plano.',
+  error: 'Tu pago está en revisión — lo seguiremos verificando en segundo plano.',
   not_configured: 'La validación automática no está configurada. Un administrador la revisará.',
 };
 
