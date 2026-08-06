@@ -1195,6 +1195,8 @@ h1, h2, h3 {
 
 .admin-table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
   background: var(--bg-surface-glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -1239,6 +1241,11 @@ h1, h2, h3 {
 
 @media (max-width: 640px) {
   .admin-title { font-size: 1.5rem; }
+  .admin-table { font-size: 0.78rem; }
+  .admin-table th,
+  .admin-table td { padding: 8px 9px; }
+  .admin-note { max-width: 190px; }
+  .admin-main { padding: var(--space-md) var(--space-sm); }
 }
 
 /* ============================================
@@ -2063,12 +2070,27 @@ select.ref-input { appearance: auto; }
   flex-wrap: wrap;
 }
 
+/* Aprobar/rechazar SIEMPRE a la vista (clave en móvil): la columna
+   Acciones queda pegada al borde derecho mientras la tabla scrollea
+   horizontal por debajo. Fondo sólido para tapar lo que pasa detrás. */
+.admin-table th.admin-th-actions,
+.admin-table td.admin-actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: #16110a;
+  box-shadow: -10px 0 14px rgba(0, 0, 0, 0.45);
+}
+
 .admin-note {
   font-size: 0.72rem;
   color: var(--text-muted);
   margin-top: 4px;
   max-width: 260px;
   line-height: 1.4;
+  /* Las notas largas envuelven (el td es nowrap): sin esto la nota
+     ensanchaba la tabla cientos de píxeles */
+  white-space: normal;
 }
 
 /* Nota de anomalía (referencia repetida, etc.): resaltada */

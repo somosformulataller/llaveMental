@@ -495,7 +495,7 @@ export default function AdminPage() {
                         <th>Monto</th>
                         <th>Estado</th>
                         <th>Origen</th>
-                        <th>Acciones</th>
+                        <th className="admin-th-actions">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -608,7 +608,7 @@ export default function AdminPage() {
                         <th>Monto</th>
                         <th>Datos de Pago Móvil</th>
                         <th>Estado</th>
-                        <th>Acciones</th>
+                        <th className="admin-th-actions">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
