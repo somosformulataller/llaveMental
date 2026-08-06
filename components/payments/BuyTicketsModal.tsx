@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePlayer } from '@/components/providers/PlayerProvider';
 import {
@@ -33,6 +33,9 @@ export default function BuyTicketsModal({ open, onClose, onApproved }: BuyTicket
   const [phase, setPhase] = useState<Phase>('form');
   const [message, setMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  // Captura del pago (opcional): se sube tras registrar la compra
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const proofInputRef = useRef<HTMLInputElement>(null);
 
   const totalUsd = qty * TICKET_PRICE_USD;
   const totalVes = rate ? totalUsd * rate : null;
@@ -50,6 +53,7 @@ export default function BuyTicketsModal({ open, onClose, onApproved }: BuyTicket
     setMessage(null);
     setReference('');
     setQty(1);
+    setProofFile(null);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -76,6 +80,16 @@ export default function BuyTicketsModal({ open, onClose, onApproved }: BuyTicket
         setPhase('error');
         setMessage(data.error || 'No se pudo enviar la solicitud. Intenta de nuevo.');
         return;
+      }
+      // Comprobante opcional: se sube aparte y su fallo no afecta la
+      // compra (el pago se valida contra el banco, no con la imagen)
+      if (proofFile && data.purchase_id) {
+        try {
+          const fd = new FormData();
+          fd.append('purchase_id', data.purchase_id);
+          fd.append('file', proofFile);
+          await fetch('/api/purchases/proof', { method: 'POST', body: fd });
+        } catch {}
       }
       if (data.status === 'aprobado') {
         setPhase('aprobado');
@@ -206,6 +220,42 @@ export default function BuyTicketsModal({ open, onClose, onApproved }: BuyTicket
                   maxLength={40}
                   inputMode="numeric"
                 />
+                <p className="ref-hint">
+                  💡 Puedes escribir la referencia completa o solo sus{' '}
+                  <strong>últimos 6 dígitos</strong>.
+                </p>
+
+                {/* Captura del pago (opcional) */}
+                <input
+                  ref={proofInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+                />
+                {proofFile ? (
+                  <div className="proof-row">
+                    <span className="proof-name">📎 {proofFile.name}</span>
+                    <button
+                      className="proof-remove"
+                      onClick={() => {
+                        setProofFile(null);
+                        if (proofInputRef.current) proofInputRef.current.value = '';
+                      }}
+                      aria-label="Quitar imagen"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="proof-attach"
+                    type="button"
+                    onClick={() => proofInputRef.current?.click()}
+                  >
+                    📎 Adjuntar captura del pago (opcional)
+                  </button>
+                )}
 
                 {message && <p className="buy-error">⚠️ {message}</p>}
 

@@ -1668,6 +1668,60 @@ a.wallet-badge {
 }
 select.ref-input { appearance: auto; }
 
+/* Pista bajo el campo de referencia (acepta últimos 6 dígitos) */
+.ref-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: -4px;
+}
+
+/* Captura del pago (opcional) */
+.proof-attach {
+  background: none;
+  border: 1px dashed var(--border-gold);
+  border-radius: var(--radius-md);
+  color: var(--gold-1);
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  width: 100%;
+}
+.proof-attach:hover { background: rgba(245, 197, 24, 0.08); }
+
+.proof-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+}
+.proof-name {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.proof-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.proof-remove:hover { color: var(--red-mid); }
+
+/* Enlace al comprobante en el panel admin */
+.proof-link {
+  font-size: 0.78rem;
+  color: var(--gold-1);
+}
+
 .buy-error {
   color: var(--red-mid);
   font-size: 0.85rem;

@@ -53,8 +53,32 @@ export async function GET() {
 
     const purchases = (purchasesRes.data ?? []).map((row) => {
       const { players, ...rest } = row as typeof row & { players: PlayerRel };
-      return { ...rest, username: players?.username ?? null };
+      return { ...rest, username: players?.username ?? null, proof_url: null as string | null };
     });
+
+    // Comprobantes adjuntos (opcionales): el bucket privado guarda una
+    // carpeta por compra; se firma una URL temporal para el panel.
+    if (isAdminClientConfigured()) {
+      try {
+        const storage = createAdminClient().storage.from('payment-proofs');
+        const { data: folders } = await storage.list('', { limit: 200 });
+        const withProof = new Set((folders ?? []).map((f) => f.name));
+        await Promise.all(
+          purchases
+            .filter((p) => withProof.has(p.id))
+            .map(async (p) => {
+              const { data: files } = await storage.list(p.id, { limit: 1 });
+              const file = files?.[0];
+              if (!file) return;
+              const { data: signed } = await storage.createSignedUrl(
+                `${p.id}/${file.name}`,
+                60 * 60
+              );
+              p.proof_url = signed?.signedUrl ?? null;
+            })
+        );
+      } catch {}
+    }
 
     const withdrawals = (withdrawalsRes.data ?? []).map((row) => {
       const { players, ...rest } = row as typeof row & { players: PlayerRel };

@@ -475,7 +475,21 @@ export default function AdminPage() {
                         <tr>
                           <td>{fmtDate(p.created_at)}</td>
                           <td>{playerBtn(p.id, p.player_id, p.username)}</td>
-                          <td>{p.reference}</td>
+                          <td>
+                            {p.reference}
+                            {p.proof_url && (
+                              <div>
+                                <a
+                                  className="proof-link"
+                                  href={p.proof_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  📎 Ver comprobante
+                                </a>
+                              </div>
+                            )}
+                          </td>
                           <td>
                             {fmt(Number(p.amount_usd))}
                             {p.amount_ves !== null ? ` · Bs. ${Number(p.amount_ves).toFixed(2)}` : ''} ·{' '}

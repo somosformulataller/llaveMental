@@ -141,6 +141,8 @@ export interface InteractionRow {
 
 export interface AdminPurchaseRow extends TicketPurchase {
   username: string | null;
+  /** URL firmada del comprobante adjunto (si el jugador subió uno) */
+  proof_url?: string | null;
 }
 
 export interface AdminWithdrawalRow extends Withdrawal {
