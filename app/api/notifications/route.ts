@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
+import { revalidatePendingPurchases } from '@/lib/payments/backgroundRevalidate';
 
 interface NotificationItem {
   id: string;
@@ -135,6 +136,11 @@ export async function GET() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ notifications: [] });
+
+    // De paso, reintentar en segundo plano las compras pendientes de
+    // CUALQUIER jugador (con throttle): así un pago que quedó en
+    // revisión se valida solo aunque su dueño haya cerrado la app.
+    after(() => revalidatePendingPurchases().catch(() => {}));
 
     const { data: me } = await supabase
       .from('players')
