@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            'Esta cédula ya está registrada en otra cuenta. Cada persona puede tener una sola cuenta; si es tuya y no recuerdas el acceso, escríbenos por el chat de atención.',
+            'Ya existe un usuario registrado con esta cédula. Cada persona puede tener una sola cuenta; si es la tuya y no recuerdas el acceso, escríbenos por el chat de atención.',
         },
         { status: 409 }
       );
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
       // único de la base rechaza el alta (el trigger falla).
       if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
         return NextResponse.json(
-          { error: 'Esta cédula ya está registrada en otra cuenta.' },
+          { error: 'Ya existe un usuario registrado con esta cédula.' },
           { status: 409 }
         );
       }
