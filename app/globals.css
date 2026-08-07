@@ -2967,3 +2967,13 @@ select.ref-input { appearance: auto; }
 .staff-area-check input { accent-color: var(--gold-1); }
 .staff-create { align-self: flex-start; }
 
+/* Error de un campo puntual del registro (bajo su input) */
+.form-input-error,
+.form-input-error:focus { border-color: var(--red-mid); }
+.field-error {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--red-mid);
+}
+

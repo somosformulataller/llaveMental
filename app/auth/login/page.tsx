@@ -26,6 +26,9 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Error propio del campo cédula (p. ej. cédula ya registrada):
+  // se muestra DEBAJO del input para que se vea dónde está el problema
+  const [cedulaError, setCedulaError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const router = useRouter();
@@ -34,6 +37,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setCedulaError(null);
     setSuccess(null);
 
     if (isSignUp) {
@@ -67,7 +71,16 @@ export default function LoginPage() {
         });
         const data = await res.json();
         if (!res.ok) {
-          setError(data.error || 'No se pudo crear la cuenta');
+          const msg = data.error || 'No se pudo crear la cuenta';
+          // Si el problema es la cédula, el detalle va bajo su input
+          // y arriba del botón queda el aviso general del registro.
+          if (msg.toLowerCase().includes('cédula') || msg.toLowerCase().includes('cedula')) {
+            setCedulaError(msg);
+            setError('Hay un error en tu registro: revisa el número de cédula.');
+            document.getElementById('cedula')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          } else {
+            setError(msg);
+          }
           return;
         }
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -134,7 +147,6 @@ export default function LoginPage() {
 
         {/* Form */}
         <form className="auth-form" onSubmit={handleSubmit}>
-          {error && <div className="auth-error">⚠️ {error}</div>}
           {success && <div className="auth-success">✓ {success}</div>}
 
           {isSignUp && (
@@ -208,14 +220,24 @@ export default function LoginPage() {
                 <input
                   id="cedula"
                   type="text"
-                  className="form-input"
+                  className={`form-input ${cedulaError ? 'form-input-error' : ''}`}
                   placeholder="V12345678"
                   value={cedula}
-                  onChange={(e) => setCedula(e.target.value)}
+                  onChange={(e) => {
+                    setCedula(e.target.value);
+                    setCedulaError(null);
+                  }}
                   required
                   minLength={5}
                   maxLength={15}
+                  aria-invalid={!!cedulaError}
+                  aria-describedby={cedulaError ? 'cedula-error' : undefined}
                 />
+                {cedulaError && (
+                  <p className="field-error" id="cedula-error" role="alert">
+                    ⚠️ {cedulaError}
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -269,6 +291,10 @@ export default function LoginPage() {
             </>
           )}
 
+          {/* El error SIEMPRE junto al botón: es lo último que el
+              usuario ve antes de reintentar */}
+          {error && <div className="auth-error">⚠️ {error}</div>}
+
           <button
             type="submit"
             className="btn-submit"
@@ -287,7 +313,7 @@ export default function LoginPage() {
           {isSignUp ? '¿Ya tienes cuenta? ' : '¿No tienes cuenta? '}
           <a
             href="#"
-            onClick={(e) => { e.preventDefault(); setIsSignUp(!isSignUp); setError(null); setSuccess(null); }}
+            onClick={(e) => { e.preventDefault(); setIsSignUp(!isSignUp); setError(null); setCedulaError(null); setSuccess(null); }}
           >
             {isSignUp ? 'Inicia sesión' : 'Regístrate'}
           </a>
