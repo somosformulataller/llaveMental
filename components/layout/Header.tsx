@@ -87,9 +87,10 @@ export default function Header() {
   const coinKeys = useCoinKeys();
   const router = useRouter();
   const pathname = usePathname();
-  // El contador de llaves SOLO aplica en la pantalla de juego (si se
-  // recarga en otra página con partida pendiente, ahí va el saldo)
-  const showCoinKeys = coinKeys !== null && pathname === '/game';
+  // En la pantalla de juego el header muestra SIEMPRE el contador de
+  // llaves — nunca la bolsa de saldo (el saldo va en grande en la
+  // escena). Sin partida en curso marca 0 y salta a 5 al iniciar.
+  const showCoinKeys = pathname === '/game';
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -199,7 +200,7 @@ export default function Header() {
               {/* Con partida en curso: contador de llaves con monedas
                   ocultas (el saldo se ve en grande en la escena) */}
               {showCoinKeys ? (
-                <CoinKeysBadge count={coinKeys as number} />
+                <CoinKeysBadge count={coinKeys ?? 0} />
               ) : (
                 <Link href="/billetera" className="wallet-badge" prefetch>
                   <span className="wallet-icon">💰</span>
