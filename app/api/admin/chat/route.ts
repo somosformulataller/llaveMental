@@ -2,21 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
 import { AdminChatListItem, ChatConversationStatus, ChatMessage } from '@/types/chat';
+import { requireStaff } from '@/lib/admin/guard';
 
 const STATUSES: ChatConversationStatus[] = ['pendiente', 'prioridad', 'resuelto'];
 
+// El chat lo atiende cualquier miembro del staff con el área 'chat'
+// (admins y atención al cliente).
 async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { user: null, error: NextResponse.json({ error: 'No autenticado' }, { status: 401 }) };
-
-  const { data: me } = await supabase.from('players').select('role').eq('id', user.id).single();
-  if (me?.role !== 'admin') {
-    return { user: null, error: NextResponse.json({ error: 'No autorizado' }, { status: 403 }) };
-  }
-  return { user, error: null };
+  const { staff, error } = await requireStaff('chat');
+  return { user: staff ? { id: staff.userId } : null, error };
 }
 
 // Mapa id → email de auth (players no guarda el correo)
@@ -59,7 +53,7 @@ export async function GET(req: NextRequest) {
         admin
           .from('players')
           .select('id, username, payout_cedula, role')
-          .neq('role', 'admin')
+          .eq('role', 'player')
           .limit(500),
         loadEmailMap(admin),
       ]);
@@ -274,7 +268,7 @@ export async function POST(req: NextRequest) {
         .select('id, role')
         .eq('id', body.player_id)
         .maybeSingle();
-      if (!target || target.role === 'admin') {
+      if (!target || target.role !== 'player') {
         return NextResponse.json({ error: 'Jugador no encontrado' }, { status: 404 });
       }
       const { data: conv, error: convError } = await admin

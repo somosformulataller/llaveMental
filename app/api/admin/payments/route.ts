@@ -1,43 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
+import { requireStaff } from '@/lib/admin/guard';
 
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { supabase, error: NextResponse.json({ error: 'No autenticado' }, { status: 401 }) };
-
-  const { data: me } = await supabase.from('players').select('role').eq('id', user.id).single();
-  if (me?.role !== 'admin') {
-    return { supabase, error: NextResponse.json({ error: 'Acceso denegado' }, { status: 403 }) };
-  }
-  return { supabase, error: null };
-}
-
-// Transacciones (admin): compras de tickets y retiros con los datos
-// del jugador. Lecturas con la clave de servidor (igual que stats:
-// no depende de que las políticas RLS de admin estén bien en la BD).
+// Transacciones (staff con área 'transacciones'): compras de tickets
+// y retiros con los datos del jugador. Lecturas con la clave de
+// servidor (igual que stats: no depende de que las políticas RLS de
+// admin estén bien en la BD).
 export async function GET() {
   try {
-    const { supabase, error } = await requireAdmin();
+    const { error } = await requireStaff('transacciones');
     if (error) return error;
 
-    const db = isAdminClientConfigured() ? createAdminClient() : supabase;
+    const db = isAdminClientConfigured() ? createAdminClient() : await createClient();
 
     const [purchasesRes, withdrawalsRes] = await Promise.all([
       db
         .from('ticket_purchases')
         .select(
-          'id, player_id, quantity, amount_usd, amount_ves, exchange_rate_used, reference, status, origin, status_note, created_at, validated_at, players(username)'
+          'id, player_id, quantity, amount_usd, amount_ves, exchange_rate_used, reference, status, origin, status_note, created_at, validated_at, players(username, whatsapp, cedula, payout_cedula, payout_phone)'
         )
         .order('created_at', { ascending: false })
         .limit(100),
       db
         .from('withdrawals')
         .select(
-          'id, player_id, amount_usd, status, reference, admin_note, created_at, paid_at, players(username, payout_name, payout_bank, payout_cedula, payout_phone)'
+          'id, player_id, amount_usd, status, reference, admin_note, created_at, paid_at, players(username, whatsapp, cedula, payout_name, payout_bank, payout_cedula, payout_phone)'
         )
         .order('created_at', { ascending: false })
         .limit(100),
@@ -45,6 +33,8 @@ export async function GET() {
 
     type PlayerRel = {
       username: string | null;
+      whatsapp?: string | null;
+      cedula?: string | null;
       payout_name?: string | null;
       payout_bank?: string | null;
       payout_cedula?: string | null;
@@ -53,7 +43,13 @@ export async function GET() {
 
     const purchases = (purchasesRes.data ?? []).map((row) => {
       const { players, ...rest } = row as typeof row & { players: PlayerRel };
-      return { ...rest, username: players?.username ?? null, proof_url: null as string | null };
+      return {
+        ...rest,
+        username: players?.username ?? null,
+        whatsapp: players?.whatsapp ?? players?.payout_phone ?? null,
+        cedula: players?.cedula ?? players?.payout_cedula ?? null,
+        proof_url: null as string | null,
+      };
     });
 
     // Comprobantes adjuntos (opcionales): el bucket privado guarda una
@@ -85,6 +81,8 @@ export async function GET() {
       return {
         ...rest,
         username: players?.username ?? null,
+        whatsapp: players?.whatsapp ?? players?.payout_phone ?? null,
+        cedula: players?.cedula ?? players?.payout_cedula ?? null,
         payout_name: players?.payout_name ?? null,
         payout_bank: players?.payout_bank ?? null,
         payout_cedula: players?.payout_cedula ?? null,
@@ -110,7 +108,7 @@ interface ActionBody {
 // cancelar un retiro devuelve el monto a la billetera.
 export async function POST(req: NextRequest) {
   try {
-    const { error } = await requireAdmin();
+    const { error } = await requireStaff('transacciones');
     if (error) return error;
 
     if (!isAdminClientConfigured()) {

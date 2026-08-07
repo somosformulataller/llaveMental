@@ -55,7 +55,7 @@ const fmtTime = (iso: string) =>
 // con etiquetas y no leídos, hilo con respuesta (texto/adjunto/nota de
 // voz), buscador para iniciar chats y gestión de preguntas rápidas.
 export default function AdminChatPage() {
-  const { player, isLoading, isAdmin } = usePlayer();
+  const { player, isLoading, isStaff: isAdmin } = usePlayer();
   const router = useRouter();
 
   const [tab, setTab] = useState<'convos' | 'questions'>('convos');

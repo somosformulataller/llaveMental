@@ -83,7 +83,7 @@ function CoinKeysBadge({ count }: { count: number }) {
 // notificaciones. El canje de tickets vive en la barra inferior
 // (RedeemBar) y Salir es la última opción del desplegable.
 export default function Header() {
-  const { player, isLoading, isAdmin, signOut } = usePlayer();
+  const { player, isLoading, isAdmin, isStaff, signOut } = usePlayer();
   const coinKeys = useCoinKeys();
   const router = useRouter();
   const pathname = usePathname();
@@ -125,10 +125,10 @@ export default function Header() {
     router.push(path);
   };
 
-  // El admin no juega: su menú no ofrece la pantalla de juego
-  const menuItems = isAdmin
+  // El staff (admin o atención) no juega: su menú va al panel
+  const menuItems = isStaff
     ? [
-        { label: '👑 Admin', path: '/admin' },
+        { label: isAdmin ? '👑 Admin' : '🛡️ Panel', path: '/admin' },
         { label: '💬 Chat de atención', path: '/admin/chat' },
         { label: '🏆 Ranking', path: '/ranking' },
       ]
@@ -152,7 +152,7 @@ export default function Header() {
               aria-haspopup="menu"
             >
               <span className="header-select-label">
-                {isAdmin ? '👑 Menú' : '🎟️ Comprar Tickets'}
+                {isStaff ? (isAdmin ? '👑 Menú' : '🛡️ Menú') : '🎟️ Comprar Tickets'}
               </span>
               <span className={`menu-caret ${menuOpen ? 'menu-caret-open' : ''}`}>▾</span>
             </button>
@@ -190,8 +190,8 @@ export default function Header() {
             </AnimatePresence>
           </div>
 
-          {/* El admin no juega: sin contadores de tickets ni saldo */}
-          {!isAdmin && (
+          {/* El staff no juega: sin contadores de tickets ni saldo */}
+          {!isStaff && (
             <div className="header-badges">
               <Link href="/billetera" className="wallet-badge" prefetch>
                 <span className="wallet-icon">🎟️</span>

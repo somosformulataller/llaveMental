@@ -33,7 +33,7 @@ export default function BuyTicketsModal({ open, onClose, onApproved }: BuyTicket
   const [phase, setPhase] = useState<Phase>('form');
   const [message, setMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
-  // Captura del pago (opcional): se sube tras registrar la compra
+  // Captura del pago (OBLIGATORIA): se sube tras registrar la compra
   const [proofFile, setProofFile] = useState<File | null>(null);
   const proofInputRef = useRef<HTMLInputElement>(null);
 
@@ -67,6 +67,10 @@ export default function BuyTicketsModal({ open, onClose, onApproved }: BuyTicket
       setMessage('Escribe el número de referencia del pago');
       return;
     }
+    if (!proofFile) {
+      setMessage('Adjunta la captura de pantalla de tu pago');
+      return;
+    }
     setPhase('sending');
     setMessage(null);
     try {
@@ -81,8 +85,8 @@ export default function BuyTicketsModal({ open, onClose, onApproved }: BuyTicket
         setMessage(data.error || 'No se pudo enviar la solicitud. Intenta de nuevo.');
         return;
       }
-      // Comprobante opcional: se sube aparte y su fallo no afecta la
-      // compra (el pago se valida contra el banco, no con la imagen)
+      // El comprobante se sube aparte; si su subida falla no se anula
+      // la compra (el pago se valida contra el banco, no con la imagen)
       if (proofFile && data.purchase_id) {
         try {
           const fd = new FormData();
@@ -225,7 +229,7 @@ export default function BuyTicketsModal({ open, onClose, onApproved }: BuyTicket
                   <strong>últimos 6 dígitos</strong>.
                 </p>
 
-                {/* Captura del pago (opcional) */}
+                {/* Captura del pago (obligatoria) */}
                 <input
                   ref={proofInputRef}
                   type="file"
@@ -253,7 +257,7 @@ export default function BuyTicketsModal({ open, onClose, onApproved }: BuyTicket
                     type="button"
                     onClick={() => proofInputRef.current?.click()}
                   >
-                    📎 Adjuntar captura del pago (opcional)
+                    📎 Adjuntar captura del pago (obligatorio)
                   </button>
                 )}
 
@@ -262,7 +266,7 @@ export default function BuyTicketsModal({ open, onClose, onApproved }: BuyTicket
                 <button
                   className="btn-primary buy-submit"
                   onClick={handleSubmit}
-                  disabled={reference.trim().length < 4}
+                  disabled={reference.trim().length < 4 || !proofFile}
                 >
                   Enviar solicitud de pago
                 </button>

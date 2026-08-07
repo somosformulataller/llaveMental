@@ -1,20 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
-
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-
-  const { data: me } = await supabase.from('players').select('role').eq('id', user.id).single();
-  if (me?.role !== 'admin') {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
-  }
-  return null;
-}
+import { requireStaff } from '@/lib/admin/guard';
 
 interface PlayerRow {
   id: string;
@@ -29,6 +15,7 @@ interface PlayerRow {
   blocked?: boolean;
   whatsapp?: string | null;
   cedula?: string | null;
+  panel_areas?: string[] | null;
 }
 
 // Mapa id → email de auth (players no guarda el correo)
@@ -57,24 +44,69 @@ function toUserRow(p: PlayerRow, email: string | null) {
     created_at: p.created_at,
     whatsapp: p.whatsapp ?? null,
     cedula: p.cedula ?? p.payout_cedula ?? null,
+    panel_areas: p.panel_areas ?? null,
   };
 }
 
-// Gestión de usuarios (ADMIN).
-// GET        → lista completa (con email y estado de bloqueo)
-// GET ?id=   → ficha de un usuario (para el menú de acciones)
-// GET ?q=    → buscador por nombre, correo o cédula
+// Historial completo del jugador: partidas, recargas, retiros y
+// canjes (la tabla de canjes existe desde la migración 010; si aún
+// no corrió, la lista llega vacía sin romper el resto).
+async function loadHistory(admin: ReturnType<typeof createAdminClient>, id: string) {
+  const [gamesRes, purchasesRes, withdrawalsRes, redemptionsRes] = await Promise.all([
+    admin
+      .from('game_history')
+      .select('id, payout, keys_tried_count, created_at')
+      .eq('player_id', id)
+      .order('created_at', { ascending: false })
+      .limit(50),
+    admin
+      .from('ticket_purchases')
+      .select('id, quantity, amount_usd, amount_ves, reference, status, origin, status_note, created_at, validated_at')
+      .eq('player_id', id)
+      .order('created_at', { ascending: false })
+      .limit(50),
+    admin
+      .from('withdrawals')
+      .select('id, amount_usd, status, reference, admin_note, created_at, paid_at')
+      .eq('player_id', id)
+      .order('created_at', { ascending: false })
+      .limit(50),
+    admin
+      .from('ticket_redemptions')
+      .select('id, quantity, amount_usd, created_at')
+      .eq('player_id', id)
+      .order('created_at', { ascending: false })
+      .limit(50),
+  ]);
+  return {
+    games: gamesRes.data ?? [],
+    purchases: purchasesRes.data ?? [],
+    withdrawals: withdrawalsRes.data ?? [],
+    redemptions: redemptionsRes.data ?? [],
+  };
+}
+
+// Gestión de usuarios (STAFF).
+// GET ?id=          → ficha de un usuario (cualquier área del panel)
+// GET ?id=&full=1   → ficha + historial (partidas, recargas, retiros, canjes)
+// GET               → lista completa (requiere el área 'usuarios')
 export async function GET(req: NextRequest) {
   try {
-    const error = await requireAdmin();
+    const params = req.nextUrl.searchParams;
+    const id = params.get('id');
+
+    // La ficha individual se abre desde cualquier tabla del panel
+    // (transacciones, partidas…): basta con ser staff.
+    const { error } = id
+      ? await requireStaff()
+      : await requireStaff('usuarios');
     if (error) return error;
+
     if (!isAdminClientConfigured()) {
       return NextResponse.json({ error: 'Falta SUPABASE_SECRET_KEY en el servidor' }, { status: 503 });
     }
     const admin = createAdminClient();
-    const params = req.nextUrl.searchParams;
 
-    const id = params.get('id');
     if (id) {
       const { data } = await admin.from('players').select('*').eq('id', id).maybeSingle();
       if (!data) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
@@ -83,7 +115,11 @@ export async function GET(req: NextRequest) {
         const { data: u } = await admin.auth.admin.getUserById(id);
         email = u?.user?.email ?? null;
       } catch {}
-      return NextResponse.json({ user: toUserRow(data as PlayerRow, email) });
+      const full = params.get('full') === '1';
+      return NextResponse.json({
+        user: toUserRow(data as PlayerRow, email),
+        history: full ? await loadHistory(admin, id) : undefined,
+      });
     }
 
     const [playersRes, emails] = await Promise.all([
@@ -100,10 +136,8 @@ export async function GET(req: NextRequest) {
         (r) =>
           r.username?.toLowerCase().includes(q) ||
           r.email?.toLowerCase().includes(q) ||
-          (playersRes.data ?? [])
-            .find((p) => p.id === r.id)
-            ?.payout_cedula?.toLowerCase()
-            .includes(q)
+          r.cedula?.toLowerCase().includes(q) ||
+          r.whatsapp?.toLowerCase().includes(q)
       );
     }
 
@@ -120,10 +154,18 @@ interface ActionBody {
   delta?: number;
 }
 
+// Las acciones sobre cuentas (bloquear, eliminar, ajustar tickets)
+// son exclusivas del rol admin: atención al cliente solo consulta.
 export async function POST(req: NextRequest) {
   try {
-    const error = await requireAdmin();
+    const { staff, error } = await requireStaff();
     if (error) return error;
+    if (!staff!.isFullAdmin) {
+      return NextResponse.json(
+        { error: 'Solo un administrador puede modificar cuentas' },
+        { status: 403 }
+      );
+    }
     if (!isAdminClientConfigured()) {
       return NextResponse.json({ error: 'Falta SUPABASE_SECRET_KEY en el servidor' }, { status: 503 });
     }
@@ -138,9 +180,9 @@ export async function POST(req: NextRequest) {
       .eq('id', body.player_id)
       .maybeSingle();
     if (!target) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
-    if (target.role === 'admin') {
+    if (target.role !== 'player') {
       return NextResponse.json(
-        { error: 'No puedes aplicar esta acción a un administrador' },
+        { error: 'Las cuentas del equipo se gestionan desde la sección Equipo' },
         { status: 400 }
       );
     }

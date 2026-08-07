@@ -15,7 +15,7 @@ const MAX_SIZE = 5 * 1024 * 1024;
 // (incluido el juego), solo con sesión iniciada. Sin mensajes
 // automáticos. Se actualiza por sondeo (5 s abierto / 30 s cerrado).
 export default function ChatWidget() {
-  const { player, isAdmin } = usePlayer();
+  const { player, isStaff: isAdmin } = usePlayer();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [quick, setQuick] = useState<ChatQuickQuestion[]>([]);

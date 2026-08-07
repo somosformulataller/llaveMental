@@ -17,6 +17,8 @@ interface PlayerContextValue {
   /** true solo durante la primera carga del perfil */
   isLoading: boolean;
   isAdmin: boolean;
+  /** admin O atención al cliente: puede entrar al panel */
+  isStaff: boolean;
   refresh: () => Promise<void>;
   updateBalance: (newBalance: number) => void;
   /** Actualización optimista parcial (saldo, tickets, …) */
@@ -124,6 +126,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         player,
         isLoading,
         isAdmin: player?.role === 'admin',
+        isStaff: player?.role === 'admin' || player?.role === 'support',
         refresh,
         updateBalance,
         updatePlayer,

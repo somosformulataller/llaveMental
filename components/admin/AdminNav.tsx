@@ -8,7 +8,8 @@ export type AdminSection =
   | 'transacciones'
   | 'interacciones'
   | 'partidas'
-  | 'chat';
+  | 'chat'
+  | 'equipo';
 
 const ITEMS: { key: AdminSection; label: string }[] = [
   { key: 'resumen', label: '📊 Resumen' },
@@ -17,16 +18,20 @@ const ITEMS: { key: AdminSection; label: string }[] = [
   { key: 'interacciones', label: '📈 Interacciones' },
   { key: 'partidas', label: '🗝️ Partidas' },
   { key: 'chat', label: '💬 Chat' },
+  { key: 'equipo', label: '🛡️ Equipo' },
 ];
 
 interface AdminNavProps {
   active: AdminSection;
   /** En /admin cambia la sección sin navegar; el chat siempre navega */
   onSelect?: (key: Exclude<AdminSection, 'chat'>) => void;
+  /** Áreas visibles para este miembro del staff (sin ella: todas) */
+  allowed?: AdminSection[];
 }
 
 // Menú lateral del panel de administración (en móvil, fila de chips).
-export default function AdminNav({ active, onSelect }: AdminNavProps) {
+// Solo muestra las áreas permitidas para el usuario del panel.
+export default function AdminNav({ active, onSelect, allowed }: AdminNavProps) {
   const router = useRouter();
 
   const go = (key: AdminSection) => {
@@ -38,9 +43,11 @@ export default function AdminNav({ active, onSelect }: AdminNavProps) {
     else router.push(`/admin?s=${key}`);
   };
 
+  const items = allowed ? ITEMS.filter((i) => allowed.includes(i.key)) : ITEMS;
+
   return (
     <nav className="admin-side">
-      {ITEMS.map((item) => (
+      {items.map((item) => (
         <button
           key={item.key}
           className={`admin-side-item ${active === item.key ? 'admin-side-active' : ''}`}

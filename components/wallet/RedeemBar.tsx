@@ -8,7 +8,7 @@ import { TICKET_PRICE_USD } from '@/lib/payments/constants';
 // el saldo), stepper −/+ para canje manual y la relación en vivo
 // (1 ticket = $2 y cuánto saldo quedaría). Solo con sesión iniciada.
 export default function RedeemBar() {
-  const { player, isAdmin, refresh } = usePlayer();
+  const { player, isStaff: isAdmin, refresh } = usePlayer();
   const [qty, setQty] = useState(1);
   const [redeeming, setRedeeming] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);

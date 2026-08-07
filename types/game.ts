@@ -48,7 +48,7 @@ export interface TryKeyResponse {
   error?: string;
 }
 
-export type PlayerRole = 'player' | 'admin';
+export type PlayerRole = 'player' | 'admin' | 'support';
 
 export interface Player {
   id: string;
@@ -58,6 +58,8 @@ export interface Player {
   total_wagered: number;
   total_won: number;
   role?: PlayerRole;
+  /** Áreas del panel asignadas al staff (NULL = todas para un admin) */
+  panel_areas?: string[] | null;
   /** Cédula del REGISTRO: fija la identidad; el campo de cobro se
       bloquea cuando existe */
   cedula?: string | null;
@@ -146,6 +148,8 @@ export interface AdminPurchaseRow extends TicketPurchase {
   username: string | null;
   /** URL firmada del comprobante adjunto (si el jugador subió uno) */
   proof_url?: string | null;
+  whatsapp?: string | null;
+  cedula?: string | null;
 }
 
 export interface AdminWithdrawalRow extends Withdrawal {
@@ -154,6 +158,8 @@ export interface AdminWithdrawalRow extends Withdrawal {
   payout_bank: string | null;
   payout_cedula: string | null;
   payout_phone: string | null;
+  whatsapp?: string | null;
+  cedula?: string | null;
 }
 
 export interface AppEventRow {
@@ -204,6 +210,60 @@ export interface AdminUserRow {
   created_at: string;
   whatsapp?: string | null;
   cedula?: string | null;
+  panel_areas?: string[] | null;
+}
+
+// ── Historial detallado de un jugador (panel admin) ──
+
+export interface PlayerHistoryGame {
+  id: string;
+  payout: number;
+  keys_tried_count: number;
+  created_at: string;
+}
+
+export interface PlayerHistoryRedemption {
+  id: string;
+  quantity: number;
+  amount_usd: number;
+  created_at: string;
+}
+
+export interface PlayerHistory {
+  games: PlayerHistoryGame[];
+  purchases: TicketPurchase[];
+  withdrawals: Withdrawal[];
+  redemptions: PlayerHistoryRedemption[];
+}
+
+// ── Equipo del panel (staff) ──
+
+export interface StaffRow {
+  id: string;
+  username: string | null;
+  email: string | null;
+  role: PlayerRole;
+  panel_areas: string[] | null;
+  created_at: string;
+}
+
+// ── Resumen de Interacciones (tops y contadores) ──
+
+export interface TopEntry {
+  id: string;
+  username: string | null;
+  value: number;
+}
+
+export interface InteractionSummary {
+  top_balance: TopEntry[];
+  top_games: TopEntry[];
+  top_purchases: TopEntry[];
+  top_withdrawals: TopEntry[];
+  total_games: number;
+  players_played: number;
+  manual_recharges: number;
+  auto_recharges: number;
 }
 
 export interface AdminHistoryRow {
@@ -215,9 +275,27 @@ export interface AdminHistoryRow {
   username?: string | null;
 }
 
+// Movimientos mínimos para calcular las métricas por período del
+// Resumen (recargas/retiros por día, 7 días, 30 días) en el cliente
+export interface FinancePurchaseLite {
+  amount_usd: number;
+  created_at: string;
+  validated_at: string | null;
+}
+
+export interface FinanceWithdrawalLite {
+  amount_usd: number;
+  created_at: string;
+  paid_at: string | null;
+}
+
 export interface AdminStatsResponse {
-  stats: AdminStats;
+  stats: AdminStats | null;
   players: AdminPlayerRow[];
   recent_games: AdminHistoryRow[];
+  finance?: {
+    purchases: FinancePurchaseLite[];
+    withdrawals: FinanceWithdrawalLite[];
+  };
   error?: string;
 }

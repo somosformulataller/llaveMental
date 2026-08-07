@@ -2845,3 +2845,125 @@ select.ref-input { appearance: auto; }
   .chat-panel { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
 }
 
+/* ══ Panel admin: historial del jugador, tops y equipo ══ */
+
+/* Historial dentro de la ficha del jugador */
+.phistory {
+  margin-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 10px;
+}
+.phistory-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.phistory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.phistory-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-surface-2);
+  font-size: 0.8rem;
+}
+.phistory-date { color: var(--text-muted); white-space: nowrap; }
+.phistory-empty { color: var(--text-muted); font-size: 0.85rem; padding: 4px 2px; }
+
+/* Tops de Interacciones */
+.top-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+.top-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--bg-surface-2);
+  padding: 12px 14px;
+}
+.top-title { font-weight: 700; margin-bottom: 8px; font-size: 0.9rem; }
+.top-empty { color: var(--text-muted); font-size: 0.82rem; }
+.top-list {
+  list-style: none;
+  counter-reset: top;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.top-list li {
+  counter-increment: top;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.84rem;
+}
+.top-list li::before {
+  content: counter(top) '.';
+  color: var(--text-muted);
+  min-width: 1.2em;
+}
+.top-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.top-value { font-weight: 700; color: var(--gold-1); white-space: nowrap; }
+
+/* Equipo del panel */
+.staff-ok {
+  border: 1px solid rgba(0, 200, 120, 0.4);
+  background: rgba(0, 200, 120, 0.12);
+  color: var(--green-win);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+}
+.staff-form {
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--bg-surface-2);
+  padding: 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.staff-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+.staff-form .chat-input { border-radius: 10px; }
+.staff-areas-title { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; }
+.staff-areas-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+.staff-area-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.staff-area-check input { accent-color: var(--gold-1); }
+.staff-create { align-self: flex-start; }
+

@@ -10,7 +10,7 @@ import { usePlayer } from '@/components/providers/PlayerProvider';
 // sin sesión). El administrador NO juega: se le envía a su panel
 // (la API de buy-ticket también lo bloquea del lado del servidor).
 export default function GamePage() {
-  const { isAdmin, isLoading } = usePlayer();
+  const { isStaff: isAdmin, isLoading } = usePlayer();
   const router = useRouter();
 
   useEffect(() => {

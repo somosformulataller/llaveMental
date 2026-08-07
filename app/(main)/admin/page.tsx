@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePlayer } from '@/components/providers/PlayerProvider';
 import {
@@ -10,10 +10,14 @@ import {
   AdminWithdrawalRow,
   AppEventRow,
   InteractionRow,
+  InteractionSummary,
+  TopEntry,
 } from '@/types/game';
 import { PURCHASE_STATUS_LABEL } from '@/lib/payments/constants';
+import { allowedAreas } from '@/lib/admin/areas';
 import AdminNav, { AdminSection } from '@/components/admin/AdminNav';
 import PlayerDetail from '@/components/admin/PlayerDetail';
+import StaffPanel from '@/components/admin/StaffPanel';
 
 const fmt = (n: number) => `$${Number(n).toFixed(2)}`;
 const fmtDate = (iso: string | null) =>
@@ -36,6 +40,40 @@ const EVENT_LABEL: Record<AppEventRow['event_type'], string> = {
 };
 
 type Section = Exclude<AdminSection, 'chat'>;
+
+// ── Filtro por período del Resumen (día de Venezuela, UTC-4) ──
+type StatsRange = 'hoy' | 'ayer' | '7d' | '30d';
+
+const RANGE_LABEL: Record<StatsRange, string> = {
+  hoy: '📅 Hoy',
+  ayer: '↩️ Ayer',
+  '7d': '🗓️ Últimos 7 días',
+  '30d': '🗓️ Últimos 30 días',
+};
+
+const CARACAS_OFFSET_MS = 4 * 3_600_000;
+
+/** Epoch (ms) de la medianoche de hace `daysAgo` días en Venezuela */
+function caracasDayStart(daysAgo: number): number {
+  const shifted = new Date(Date.now() - CARACAS_OFFSET_MS);
+  return (
+    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate() - daysAgo) +
+    CARACAS_OFFSET_MS
+  );
+}
+
+function rangeBounds(range: StatsRange): { from: number; to: number } {
+  switch (range) {
+    case 'hoy':
+      return { from: caracasDayStart(0), to: Infinity };
+    case 'ayer':
+      return { from: caracasDayStart(1), to: caracasDayStart(0) };
+    case '7d':
+      return { from: caracasDayStart(6), to: Infinity };
+    case '30d':
+      return { from: caracasDayStart(29), to: Infinity };
+  }
+}
 
 // Tarjeta de estadística con ícono ℹ️: al tocarlo explica qué mide
 // el bloque en relación con la lógica RTP/RNG del juego.
@@ -66,16 +104,48 @@ function StatCard({
   );
 }
 
+// Ranking corto (top 5) para la sección Interacciones
+function TopList({
+  title,
+  entries,
+  render,
+}: {
+  title: string;
+  entries: TopEntry[];
+  render: (value: number) => string;
+}) {
+  return (
+    <div className="top-card">
+      <p className="top-title">{title}</p>
+      {entries.length === 0 ? (
+        <p className="top-empty">Sin datos todavía</p>
+      ) : (
+        <ol className="top-list">
+          {entries.map((e) => (
+            <li key={e.id}>
+              <span className="top-name">{e.username || e.id.slice(0, 8)}</span>
+              <span className="top-value">{render(Number(e.value))}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
-  const { player, isLoading, isAdmin } = usePlayer();
+  const { player, isLoading, isAdmin, isStaff } = usePlayer();
   const router = useRouter();
   const [section, setSection] = useState<Section>('resumen');
   const [data, setData] = useState<AdminStatsResponse | null>(null);
   const [purchases, setPurchases] = useState<AdminPurchaseRow[]>([]);
   const [withdrawals, setWithdrawals] = useState<AdminWithdrawalRow[]>([]);
   const [interaction, setInteraction] = useState<InteractionRow[]>([]);
+  const [interSummary, setInterSummary] = useState<InteractionSummary | null>(null);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [userSearch, setUserSearch] = useState('');
+  const [txSearch, setTxSearch] = useState('');
+  const [statsRange, setStatsRange] = useState<StatsRange>('hoy');
   const [flowPlayer, setFlowPlayer] = useState<string | null>(null);
   const [flowEvents, setFlowEvents] = useState<AppEventRow[]>([]);
   const [purchaseFilter, setPurchaseFilter] = useState<
@@ -92,63 +162,103 @@ export default function AdminPage() {
     username: string | null;
   } | null>(null);
 
-  // Solo admins: los demás vuelven al inicio (la API y RLS también protegen)
+  // Áreas del panel visibles para este miembro del staff (un admin
+  // sin restricciones ve todo; atención al cliente, solo lo asignado)
+  const allowed = useMemo(
+    () => allowedAreas(player?.role, player?.panel_areas),
+    [player]
+  );
+
+  // Solo staff: los demás vuelven al inicio (la API y RLS también protegen)
   useEffect(() => {
-    if (!isLoading && !isAdmin) router.replace(player ? '/game' : '/auth/login');
-  }, [isLoading, isAdmin, player, router]);
+    if (!isLoading && !isStaff) router.replace(player ? '/game' : '/auth/login');
+  }, [isLoading, isStaff, player, router]);
 
   // Sección inicial desde la URL (/admin?s=usuarios) — permite que el
   // menú lateral del chat navegue directo a una sección.
   useEffect(() => {
     const s = new URLSearchParams(window.location.search).get('s');
-    if (s && ['resumen', 'usuarios', 'transacciones', 'interacciones', 'partidas'].includes(s)) {
+    if (
+      s &&
+      ['resumen', 'usuarios', 'transacciones', 'interacciones', 'partidas', 'equipo'].includes(s)
+    ) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- sincronización única con la URL
       setSection(s as Section);
     }
   }, []);
+
+  // Si la sección actual no está permitida para esta cuenta, saltar
+  // a la primera que sí lo esté (p. ej. atención sin Resumen).
+  useEffect(() => {
+    if (!player || allowed.length === 0) return;
+    if (!allowed.includes(section)) {
+      const first = allowed.find((a) => a !== 'chat') ?? 'chat';
+      if (first === 'chat') {
+        router.replace('/admin/chat');
+        return;
+      }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- corrección única de la sección
+      setSection(first as Section);
+    }
+  }, [player, allowed, section, router]);
 
   const selectSection = (s: Section) => {
     setSection(s);
     window.history.replaceState(null, '', `/admin?s=${s}`);
   };
 
+  // Solo se piden las áreas permitidas (las demás responderían 403)
   const loadAll = useCallback(async () => {
+    if (allowed.length === 0) return;
+    const can = (a: string) => allowed.includes(a as (typeof allowed)[number]);
     try {
+      const skip = Promise.resolve(null);
       const [statsRes, paymentsRes, interactionRes, usersRes] = await Promise.all([
-        fetch('/api/admin/stats', { cache: 'no-store' }),
-        fetch('/api/admin/payments', { cache: 'no-store' }),
-        fetch('/api/admin/interaction', { cache: 'no-store' }),
-        fetch('/api/admin/users', { cache: 'no-store' }),
+        can('resumen') || can('partidas')
+          ? fetch('/api/admin/stats', { cache: 'no-store' })
+          : skip,
+        can('transacciones') ? fetch('/api/admin/payments', { cache: 'no-store' }) : skip,
+        can('interacciones') ? fetch('/api/admin/interaction', { cache: 'no-store' }) : skip,
+        can('usuarios') ? fetch('/api/admin/users', { cache: 'no-store' }) : skip,
       ]);
-      const stats = await statsRes.json();
-      const payments = await paymentsRes.json();
-      const inter = await interactionRes.json();
-      const usersData = await usersRes.json();
-      if (!statsRes.ok) setError(stats.error || 'Error al cargar estadísticas');
-      else {
-        setData(stats);
+      if (statsRes) {
+        const stats = await statsRes.json();
+        if (!statsRes.ok) setError(stats.error || 'Error al cargar estadísticas');
+        else {
+          setData(stats);
+          setError(null);
+        }
+      } else {
         setError(null);
       }
-      if (paymentsRes.ok) {
+      if (paymentsRes?.ok) {
+        const payments = await paymentsRes.json();
         setPurchases(payments.purchases ?? []);
         setWithdrawals(payments.withdrawals ?? []);
       }
-      if (interactionRes.ok) setInteraction(inter.players ?? []);
-      if (usersRes.ok) setUsers(usersData.users ?? []);
+      if (interactionRes?.ok) {
+        const inter = await interactionRes.json();
+        setInteraction(inter.players ?? []);
+        setInterSummary(inter.summary ?? null);
+      }
+      if (usersRes?.ok) {
+        const usersData = await usersRes.json();
+        setUsers(usersData.users ?? []);
+      }
     } catch {
       setError('Error de conexión');
     }
-  }, []);
+  }, [allowed]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isStaff) return;
     // La carga es asíncrona: el setState ocurre tras el fetch, no en
     // el cuerpo del efecto (falso positivo del compilador).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAll();
     const interval = setInterval(loadAll, 30_000); // refresco en vivo
     return () => clearInterval(interval);
-  }, [isAdmin, loadAll]);
+  }, [isStaff, loadAll]);
 
   const doAction = async (body: Record<string, string>) => {
     setBusy(true);
@@ -222,7 +332,7 @@ export default function AdminPage() {
     navigator.clipboard?.writeText(text).catch(() => {});
   };
 
-  if (!isAdmin) return null;
+  if (!isStaff || !player) return null;
 
   // Detalle del jugador expandido DEBAJO de su fila (tipo acordeón,
   // sin modal). La clave es única por fila para no abrir duplicados.
@@ -259,21 +369,64 @@ export default function AdminPage() {
     ) : null;
 
   const stats = data?.stats;
+
+  // ── Métricas del período elegido (Resumen): recargas y retiros ──
+  const { from, to } = rangeBounds(statsRange);
+  const inRange = (iso: string | null | undefined, fallback: string) => {
+    const t = new Date(iso ?? fallback).getTime();
+    return t >= from && t < to;
+  };
+  const periodPurchases = (data?.finance?.purchases ?? []).filter((p) =>
+    inRange(p.validated_at, p.created_at)
+  );
+  const periodWithdrawals = (data?.finance?.withdrawals ?? []).filter((w) =>
+    inRange(w.paid_at, w.created_at)
+  );
+  const periodCollected = periodPurchases.reduce((s, p) => s + Number(p.amount_usd), 0);
+  const periodWithdrawn = periodWithdrawals.reduce((s, w) => s + Number(w.amount_usd), 0);
+
+  // ── Buscador de Transacciones: referencia (completa o últimos
+  // dígitos), nombre, teléfono o cédula ──
+  const tq = txSearch.trim().toLowerCase().replace(/\s/g, '');
+  const matchesTx = (row: {
+    reference?: string | null;
+    username: string | null;
+    whatsapp?: string | null;
+    cedula?: string | null;
+    payout_phone?: string | null;
+    payout_cedula?: string | null;
+  }) => {
+    if (!tq) return true;
+    const haystacks = [
+      row.reference,
+      row.username,
+      row.whatsapp,
+      row.cedula,
+      row.payout_phone,
+      row.payout_cedula,
+    ];
+    return haystacks.some((h) => h?.toLowerCase().replace(/\s/g, '').includes(tq));
+  };
+  const searchedPurchases = purchases.filter(matchesTx);
+  const searchedWithdrawals = withdrawals.filter(matchesTx);
+
   // Cada compra vive en SU filtro: al aprobar o rechazar una pendiente
   // pasa de lista ("validando" cuenta como pendiente: es transitorio).
   const purchaseBuckets = {
-    pendientes: purchases.filter((p) => p.status === 'pendiente' || p.status === 'validando'),
-    aprobadas: purchases.filter((p) => p.status === 'aprobado'),
-    rechazadas: purchases.filter((p) => p.status === 'rechazado'),
-    todas: purchases,
+    pendientes: searchedPurchases.filter(
+      (p) => p.status === 'pendiente' || p.status === 'validando'
+    ),
+    aprobadas: searchedPurchases.filter((p) => p.status === 'aprobado'),
+    rechazadas: searchedPurchases.filter((p) => p.status === 'rechazado'),
+    todas: searchedPurchases,
   } as const;
   const visiblePurchases = purchaseBuckets[purchaseFilter];
-  const pendingWithdrawals = withdrawals.filter((w) => w.status === 'pendiente');
-  const otherWithdrawals = withdrawals.filter((w) => w.status !== 'pendiente');
+  const pendingWithdrawals = searchedWithdrawals.filter((w) => w.status === 'pendiente');
+  const otherWithdrawals = searchedWithdrawals.filter((w) => w.status !== 'pendiente');
   const withdrawalBuckets = {
     pendientes: pendingWithdrawals,
-    pagados: withdrawals.filter((w) => w.status === 'pagado'),
-    cancelados: withdrawals.filter((w) => w.status === 'cancelado'),
+    pagados: searchedWithdrawals.filter((w) => w.status === 'pagado'),
+    cancelados: searchedWithdrawals.filter((w) => w.status === 'cancelado'),
     todos: [...pendingWithdrawals, ...otherWithdrawals],
   } as const;
   const visibleWithdrawals = withdrawalBuckets[withdrawalFilter];
@@ -281,7 +434,11 @@ export default function AdminPage() {
   const q = userSearch.trim().toLowerCase();
   const visibleUsers = q
     ? users.filter(
-        (u) => u.username?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
+        (u) =>
+          u.username?.toLowerCase().includes(q) ||
+          u.email?.toLowerCase().includes(q) ||
+          u.whatsapp?.toLowerCase().replace(/\s/g, '').includes(q.replace(/\s/g, '')) ||
+          u.cedula?.toLowerCase().replace(/\s/g, '').includes(q.replace(/\s/g, ''))
       )
     : users;
 
@@ -293,12 +450,52 @@ export default function AdminPage() {
       {error && <div className="auth-error">⚠️ {error}</div>}
 
       <div className="admin-shell">
-        <AdminNav active={section} onSelect={selectSection} />
+        <AdminNav active={section} onSelect={selectSection} allowed={allowed} />
 
         <div className="admin-content">
           {/* ── RESUMEN ── */}
           {section === 'resumen' && (
             <>
+              {/* Métricas del período: recargas, retiros y ganancia neta */}
+              <div className="admin-filter-row">
+                {(Object.keys(RANGE_LABEL) as StatsRange[]).map((r) => (
+                  <button
+                    key={r}
+                    className={`btn-mini ${statsRange === r ? 'btn-mini-active' : ''}`}
+                    onClick={() => setStatsRange(r)}
+                  >
+                    {RANGE_LABEL[r]}
+                  </button>
+                ))}
+              </div>
+              <div className="admin-stats-grid">
+                <StatCard
+                  value={data?.finance ? periodPurchases.length : '—'}
+                  label="Cantidad de recargas"
+                  help="Compras de tickets APROBADAS en el período elegido (pagos reales por Pago Móvil, automáticos o aprobados a mano)."
+                />
+                <StatCard
+                  value={data?.finance ? fmt(periodCollected) : '—'}
+                  label="💵 Total recargado"
+                  help="Dinero real que entró en el período: la suma de las compras de tickets aprobadas."
+                />
+                <StatCard
+                  value={data?.finance ? periodWithdrawals.length : '—'}
+                  label="Cantidad de retiros"
+                  help="Retiros PAGADOS a los jugadores en el período elegido."
+                />
+                <StatCard
+                  value={data?.finance ? fmt(periodWithdrawn) : '—'}
+                  label="💸 Total retirado"
+                  help="Dinero real que salió en el período: la suma de los retiros ya pagados."
+                />
+                <StatCard
+                  value={data?.finance ? fmt(periodCollected - periodWithdrawn) : '—'}
+                  label="Ganancia neta"
+                  help="Recargado menos retirado en el período: el flujo de caja real. No incluye lo que los jugadores aún tienen en sus billeteras (eso se debe)."
+                />
+              </div>
+
               <div className="admin-stats-grid">
                 <StatCard
                   value={stats ? stats.total_players : '—'}
@@ -384,7 +581,7 @@ export default function AdminPage() {
               <h2 className="admin-section-title">👥 Usuarios</h2>
               <input
                 className="chat-input users-search"
-                placeholder="Buscar por nombre o correo…"
+                placeholder="Buscar por nombre, correo, teléfono o cédula…"
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
               />
@@ -456,6 +653,12 @@ export default function AdminPage() {
             <>
               <section className="admin-section">
                 <h2 className="admin-section-title">🎫 Compras de tickets</h2>
+                <input
+                  className="chat-input users-search"
+                  placeholder="Buscar por referencia (completa o últimos 6 dígitos), nombre, teléfono o cédula…"
+                  value={txSearch}
+                  onChange={(e) => setTxSearch(e.target.value)}
+                />
                 <div className="admin-filter-row">
                   <button
                     className={`btn-mini ${purchaseFilter === 'pendientes' ? 'btn-mini-active' : ''}`}
@@ -479,7 +682,7 @@ export default function AdminPage() {
                     className={`btn-mini ${purchaseFilter === 'todas' ? 'btn-mini-active' : ''}`}
                     onClick={() => setPurchaseFilter('todas')}
                   >
-                    Todas ({purchases.length})
+                    Todas ({searchedPurchases.length})
                   </button>
                   <span className="admin-hint">
                     La validación automática nunca rechaza: rechazar es siempre decisión tuya.
@@ -558,8 +761,9 @@ export default function AdminPage() {
                       {visiblePurchases.length === 0 && (
                         <tr>
                           <td colSpan={7}>
-                            Sin compras{' '}
-                            {purchaseFilter === 'todas' ? 'todavía' : purchaseFilter}
+                            {tq
+                              ? 'Sin resultados para esa búsqueda.'
+                              : `Sin compras ${purchaseFilter === 'todas' ? 'todavía' : purchaseFilter}`}
                           </td>
                         </tr>
                       )}
@@ -596,7 +800,7 @@ export default function AdminPage() {
                     className={`btn-mini ${withdrawalFilter === 'todos' ? 'btn-mini-active' : ''}`}
                     onClick={() => setWithdrawalFilter('todos')}
                   >
-                    Todos ({withdrawals.length})
+                    Todos ({searchedWithdrawals.length})
                   </button>
                 </div>
                 <div className="admin-table-wrap">
@@ -664,7 +868,9 @@ export default function AdminPage() {
                       {visibleWithdrawals.length === 0 && (
                         <tr>
                           <td colSpan={6}>
-                            Sin retiros {withdrawalFilter === 'todos' ? 'todavía' : withdrawalFilter}
+                            {tq
+                              ? 'Sin resultados para esa búsqueda.'
+                              : `Sin retiros ${withdrawalFilter === 'todos' ? 'todavía' : withdrawalFilter}`}
                           </td>
                         </tr>
                       )}
@@ -679,6 +885,59 @@ export default function AdminPage() {
           {section === 'interacciones' && (
             <section className="admin-section">
               <h2 className="admin-section-title">📊 Interacción de los jugadores</h2>
+
+              {/* Contadores globales */}
+              {interSummary && (
+                <>
+                  <div className="admin-stats-grid">
+                    <StatCard
+                      value={interSummary.total_games}
+                      label="Total de partidas"
+                      help="Partidas terminadas por todos los jugadores desde el inicio."
+                    />
+                    <StatCard
+                      value={interSummary.players_played}
+                      label="Usuarios que jugaron"
+                      help="Jugadores distintos que han terminado al menos una partida."
+                    />
+                    <StatCard
+                      value={interSummary.manual_recharges}
+                      label="Recargas manuales"
+                      help="Compras de tickets aprobadas A MANO por el equipo del panel."
+                    />
+                    <StatCard
+                      value={interSummary.auto_recharges}
+                      label="Recargas automáticas"
+                      help="Compras aprobadas por la validación automática contra la API del banco (sin intervención del equipo)."
+                    />
+                  </div>
+
+                  {/* Tops de jugadores */}
+                  <div className="top-grid">
+                    <TopList
+                      title="💰 Más saldo"
+                      entries={interSummary.top_balance}
+                      render={(v) => fmt(v)}
+                    />
+                    <TopList
+                      title="🗝️ Más jugadas"
+                      entries={interSummary.top_games}
+                      render={(v) => `${v} partida${v === 1 ? '' : 's'}`}
+                    />
+                    <TopList
+                      title="🎫 Más recargas"
+                      entries={interSummary.top_purchases}
+                      render={(v) => `${v} recarga${v === 1 ? '' : 's'}`}
+                    />
+                    <TopList
+                      title="💸 Más retiros"
+                      entries={interSummary.top_withdrawals}
+                      render={(v) => `${v} retiro${v === 1 ? '' : 's'}`}
+                    />
+                  </div>
+                </>
+              )}
+
               <p className="admin-hint">
                 Toca la flecha para ver el flujo del jugador en la app; toca su nombre para las acciones.
               </p>
@@ -801,6 +1060,9 @@ export default function AdminPage() {
               </div>
             </section>
           )}
+
+          {/* ── EQUIPO (solo rol admin) ── */}
+          {section === 'equipo' && isAdmin && <StaffPanel myId={player.id} />}
         </div>
       </div>
     </main>

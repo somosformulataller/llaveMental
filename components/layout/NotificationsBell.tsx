@@ -25,7 +25,7 @@ function timeAgo(iso: string): string {
 // refresco más frecuente y tiempo real para el chat. El contador
 // marca las no leídas (última lectura guardada en el equipo).
 export default function NotificationsBell() {
-  const { player, isAdmin } = usePlayer();
+  const { player, isStaff: isAdmin } = usePlayer();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [open, setOpen] = useState(false);
   const [lastSeen, setLastSeen] = useState<string | null>(null);
