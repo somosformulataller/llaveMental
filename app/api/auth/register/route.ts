@@ -43,7 +43,10 @@ export async function POST(req: NextRequest) {
     if (!/^[\d+]{7,15}$/.test(whatsapp)) {
       return NextResponse.json({ error: 'Escribe un WhatsApp válido' }, { status: 400 });
     }
-    if (cedula.length < 5 || cedula.length > 15) {
+    // La cédula se compara por sus dígitos: "V-12.345.678" y
+    // "12345678" son la misma persona.
+    const cedulaNorm = cedula.replace(/\D/g, '');
+    if (cedula.length > 15 || cedulaNorm.length < 5) {
       return NextResponse.json({ error: 'Escribe una cédula válida' }, { status: 400 });
     }
     if (body.accepted !== true) {
@@ -54,6 +57,27 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = createAdminClient();
+
+    // La cédula es ÚNICA: una persona, una cuenta. (La base también
+    // lo exige con un índice único — migración 011 — por si dos
+    // registros llegan al mismo tiempo.)
+    const { data: cedulas } = await admin
+      .from('players')
+      .select('cedula')
+      .not('cedula', 'is', null)
+      .limit(10000);
+    const cedulaTaken = (cedulas ?? []).some(
+      (p) => (p.cedula ?? '').replace(/\D/g, '') === cedulaNorm
+    );
+    if (cedulaTaken) {
+      return NextResponse.json(
+        {
+          error:
+            'Esta cédula ya está registrada en otra cuenta. Cada persona puede tener una sola cuenta; si es tuya y no recuerdas el acceso, escríbenos por el chat de atención.',
+        },
+        { status: 409 }
+      );
+    }
     const { error } = await admin.auth.admin.createUser({
       email,
       password,
@@ -71,6 +95,14 @@ export async function POST(req: NextRequest) {
       const msg = error.message ?? '';
       if (msg.includes('already') || error.code === 'email_exists') {
         return NextResponse.json({ error: 'Este email ya está registrado.' }, { status: 409 });
+      }
+      // Carrera contra otro registro con la misma cédula: el índice
+      // único de la base rechaza el alta (el trigger falla).
+      if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
+        return NextResponse.json(
+          { error: 'Esta cédula ya está registrada en otra cuenta.' },
+          { status: 409 }
+        );
       }
       return NextResponse.json({ error: 'No se pudo crear la cuenta' }, { status: 500 });
     }
