@@ -8,6 +8,7 @@ import BalanceCounter from './BalanceCounter';
 import BuyTicketsModal from '@/components/payments/BuyTicketsModal';
 import { usePlayer } from '@/components/providers/PlayerProvider';
 import { setCoinKeys } from '@/lib/game/coinKeysStore';
+import { onGameStart } from '@/lib/game/startSignal';
 import { GameStatus, KeyStatus, LockStatus } from '@/types/game';
 import { TOTAL_KEYS } from '@/lib/game/constants';
 
@@ -200,6 +201,14 @@ export default function GameBoard() {
       setIsLoading(false);
     }
   }, [player, resumeSession, updatePlayer]);
+
+  // La barra inferior (PlayBar) pide arrancar la partida por señal:
+  // el ref evita re-suscribirse cada vez que handlePlay cambia.
+  const handlePlayRef = useRef(handlePlay);
+  useEffect(() => {
+    handlePlayRef.current = handlePlay;
+  }, [handlePlay]);
+  useEffect(() => onGameStart(() => handlePlayRef.current()), []);
 
   // Key attempt
   const handleKeyClick = async (keyId: number) => {
@@ -565,30 +574,10 @@ export default function GameBoard() {
               🎟️ Tienes <strong>{tickets}</strong> ticket{tickets !== 1 ? 's' : ''} · 1 partida = 1 ticket
             </p>
           )}
-          {player || playerLoading ? (
-            <>
-              <motion.button
-                className="btn-buy"
-                onClick={handlePlay}
-                disabled={isLoading || playerLoading}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                {isLoading || playerLoading ? (
-                  <span className="loading-dots">Cargando...</span>
-                ) : tickets > 0 ? (
-                  <>🔑 Iniciar juego — 1 ticket</>
-                ) : (
-                  <>🎟️ Comprar tickets</>
-                )}
-              </motion.button>
-              {tickets > 0 && (
-                <button className="btn-buy-more" onClick={() => setBuyOpen(true)}>
-                  Comprar más tickets
-                </button>
-              )}
-            </>
-          ) : (
+          {/* Los botones de jugar/comprar viven ahora en la barra
+              inferior (PlayBar) — ver componentesReutilizables.md.
+              Aquí solo queda el acceso para visitantes sin sesión. */}
+          {!player && !playerLoading && (
             <Link href="/auth/login" className="btn-buy" prefetch>
               🔐 Iniciar sesión para jugar
             </Link>

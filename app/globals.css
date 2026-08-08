@@ -2980,3 +2980,47 @@ select.ref-input { appearance: auto; }
 /* Estado en vivo de la validación bancaria (Transacciones) */
 .bank-note { color: #7ec8ff; }
 
+/* Barra inferior de jugar: un solo botón amarillo según el estado
+   del jugador (sustituye a la barra de canje) */
+.play-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  padding: 8px var(--space-md);
+  background: var(--bg-surface-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-gold);
+  flex-shrink: 0;
+}
+
+.play-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  background: linear-gradient(135deg, var(--gold-1), var(--gold-3));
+  color: #000;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  padding: 10px 24px;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 20px rgba(245,197,24,0.3);
+}
+.play-bar-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 30px rgba(245,197,24,0.4);
+}
+.play-bar-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  .play-bar-btn { font-size: 0.85rem; padding: 9px 16px; }
+}
+
