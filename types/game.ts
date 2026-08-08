@@ -88,6 +88,10 @@ export interface TicketPurchase {
   status_note: string | null;
   created_at: string;
   validated_at: string | null;
+  /** Última consulta a la API del banco (migración 012) */
+  last_checked_at?: string | null;
+  /** Cuántas veces se ha consultado al banco */
+  check_count?: number | null;
 }
 
 export interface Withdrawal {
@@ -144,12 +148,21 @@ export interface InteractionRow {
   created_at: string;
 }
 
+/** En qué mano está una compra no resuelta (panel de Transacciones) */
+export type PurchaseBankState = 'esperando_banco' | 'consultando' | 'revision_manual';
+
 export interface AdminPurchaseRow extends TicketPurchase {
   username: string | null;
   /** URL firmada del comprobante adjunto (si el jugador subió uno) */
   proof_url?: string | null;
   whatsapp?: string | null;
   cedula?: string | null;
+  /** null cuando la compra ya fue aprobada o rechazada */
+  bank_state?: PurchaseBankState | null;
+  /** Puesto en la cola de validación automática (1 = siguiente) */
+  queue_position?: number | null;
+  /** Minutos máximos estimados hasta el próximo intento del banco */
+  eta_minutes?: number | null;
 }
 
 export interface AdminWithdrawalRow extends Withdrawal {

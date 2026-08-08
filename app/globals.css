@@ -2977,3 +2977,6 @@ select.ref-input { appearance: auto; }
   color: var(--red-mid);
 }
 
+/* Estado en vivo de la validación bancaria (Transacciones) */
+.bank-note { color: #7ec8ff; }
+

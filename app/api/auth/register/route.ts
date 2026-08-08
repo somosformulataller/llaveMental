@@ -58,15 +58,17 @@ export async function POST(req: NextRequest) {
 
     const admin = createAdminClient();
 
-    // La cédula es ÚNICA: una persona, una cuenta. (La base también
-    // lo exige con un índice único — migración 011 — por si dos
-    // registros llegan al mismo tiempo.)
-    const { data: cedulas } = await admin
+    // La cédula y el teléfono son ÚNICOS: una persona, una cuenta.
+    // (La base también lo exige con índices únicos — migraciones 011
+    // y 013 — por si dos registros llegan al mismo tiempo.) El
+    // teléfono se compara por sus últimos 10 dígitos, así
+    // "04121234567" y "+584121234567" cuentan como el mismo número.
+    const phoneNorm = whatsapp.replace(/\D/g, '').slice(-10);
+    const { data: existing } = await admin
       .from('players')
-      .select('cedula')
-      .not('cedula', 'is', null)
+      .select('cedula, whatsapp')
       .limit(10000);
-    const cedulaTaken = (cedulas ?? []).some(
+    const cedulaTaken = (existing ?? []).some(
       (p) => (p.cedula ?? '').replace(/\D/g, '') === cedulaNorm
     );
     if (cedulaTaken) {
@@ -74,6 +76,19 @@ export async function POST(req: NextRequest) {
         {
           error:
             'Ya existe un usuario registrado con esta cédula. Cada persona puede tener una sola cuenta; si es la tuya y no recuerdas el acceso, escríbenos por el chat de atención.',
+        },
+        { status: 409 }
+      );
+    }
+    const phoneTaken = (existing ?? []).some((p) => {
+      const digits = (p.whatsapp ?? '').replace(/\D/g, '');
+      return digits !== '' && digits.slice(-10) === phoneNorm;
+    });
+    if (phoneTaken) {
+      return NextResponse.json(
+        {
+          error:
+            'Ya existe un usuario registrado con este número de teléfono. Cada persona puede tener una sola cuenta; si es la tuya y no recuerdas el acceso, escríbenos por el chat de atención.',
         },
         { status: 409 }
       );
@@ -96,11 +111,12 @@ export async function POST(req: NextRequest) {
       if (msg.includes('already') || error.code === 'email_exists') {
         return NextResponse.json({ error: 'Este email ya está registrado.' }, { status: 409 });
       }
-      // Carrera contra otro registro con la misma cédula: el índice
-      // único de la base rechaza el alta (el trigger falla).
+      // Carrera contra otro registro con la misma cédula o el mismo
+      // teléfono: el índice único de la base rechaza el alta (el
+      // trigger falla).
       if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
         return NextResponse.json(
-          { error: 'Ya existe un usuario registrado con esta cédula.' },
+          { error: 'Ya existe un usuario registrado con esta cédula o este teléfono.' },
           { status: 409 }
         );
       }

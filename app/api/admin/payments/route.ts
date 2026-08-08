@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
 import { requireStaff } from '@/lib/admin/guard';
+import { tryAutoValidatePurchase } from '@/lib/payments/validatePurchase';
+import {
+  DUPLICATE_MARKER,
+  MAX_TICKETS_PER_PURCHASE,
+  TICKET_PRICE_USD,
+} from '@/lib/payments/constants';
+
+// El cron externo revisa las pendientes cada 5 min, 2 por pasada y
+// en orden de llegada: con eso se estima cuánto falta para que el
+// banco vuelva a mirar cada compra.
+const CRON_INTERVAL_MIN = 5;
+const CHECKS_PER_PASS = 2;
+
+/** ¿Esta compra la reintenta sola la validación automática? */
+function isAutoRetryable(p: { status: string; status_note: string | null }): boolean {
+  if (p.status !== 'pendiente' && p.status !== 'validando') return false;
+  if (p.status_note?.startsWith(DUPLICATE_MARKER)) return false;
+  if (p.status_note?.includes('administrador')) return false;
+  return true;
+}
 
 // Transacciones (staff con área 'transacciones'): compras de tickets
 // y retiros con los datos del jugador. Lecturas con la clave de
@@ -14,14 +34,26 @@ export async function GET() {
 
     const db = isAdminClientConfigured() ? createAdminClient() : await createClient();
 
-    const [purchasesRes, withdrawalsRes] = await Promise.all([
-      db
+    // last_checked_at / check_count llegan con la migración 012: si la
+    // columna aún no existe, se repite la consulta sin ellas.
+    const purchaseCols =
+      'id, player_id, quantity, amount_usd, amount_ves, exchange_rate_used, reference, status, origin, status_note, created_at, validated_at, players(username, whatsapp, cedula, payout_cedula, payout_phone)';
+    const fetchPurchases = async () => {
+      const withTracking = await db
         .from('ticket_purchases')
-        .select(
-          'id, player_id, quantity, amount_usd, amount_ves, exchange_rate_used, reference, status, origin, status_note, created_at, validated_at, players(username, whatsapp, cedula, payout_cedula, payout_phone)'
-        )
+        .select(purchaseCols.replace(', players(', ', last_checked_at, check_count, players('))
         .order('created_at', { ascending: false })
-        .limit(100),
+        .limit(100);
+      if (!withTracking.error) return withTracking;
+      return db
+        .from('ticket_purchases')
+        .select(purchaseCols)
+        .order('created_at', { ascending: false })
+        .limit(100);
+    };
+
+    const [purchasesRes, withdrawalsRes] = await Promise.all([
+      fetchPurchases(),
       db
         .from('withdrawals')
         .select(
@@ -41,14 +73,48 @@ export async function GET() {
       payout_phone?: string | null;
     } | null;
 
-    const purchases = (purchasesRes.data ?? []).map((row) => {
-      const { players, ...rest } = row as typeof row & { players: PlayerRel };
+    type RawPurchase = {
+      id: string;
+      status: string;
+      status_note: string | null;
+      created_at: string;
+      last_checked_at?: string | null;
+      check_count?: number | null;
+      players: PlayerRel;
+      [key: string]: unknown;
+    };
+
+    const rawPurchases = (purchasesRes.data ?? []) as unknown as RawPurchase[];
+
+    // Cola de validación automática: las pendientes que el banco va a
+    // reintentar, en orden de llegada. El puesto en la cola da el
+    // tiempo máximo estimado hasta el próximo intento.
+    const queue = rawPurchases
+      .filter(isAutoRetryable)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const queuePos = new Map(queue.map((p, i) => [p.id, i]));
+
+    const purchases = rawPurchases.map((row) => {
+      const { players, ...rest } = row;
+      const pos = queuePos.get(row.id);
+      const unresolved = row.status === 'pendiente' || row.status === 'validando';
+      const bankState = !unresolved
+        ? null
+        : pos === undefined
+        ? ('revision_manual' as const)
+        : row.status === 'validando'
+        ? ('consultando' as const)
+        : ('esperando_banco' as const);
       return {
         ...rest,
         username: players?.username ?? null,
         whatsapp: players?.whatsapp ?? players?.payout_phone ?? null,
         cedula: players?.cedula ?? players?.payout_cedula ?? null,
         proof_url: null as string | null,
+        bank_state: bankState,
+        queue_position: pos === undefined ? null : pos + 1,
+        eta_minutes:
+          pos === undefined ? null : (Math.floor(pos / CHECKS_PER_PASS) + 1) * CRON_INTERVAL_MIN,
       };
     });
 
@@ -97,10 +163,16 @@ export async function GET() {
 }
 
 interface ActionBody {
-  action: 'approve_purchase' | 'reject_purchase' | 'pay_withdrawal' | 'cancel_withdrawal';
+  action:
+    | 'approve_purchase'
+    | 'reject_purchase'
+    | 'pay_withdrawal'
+    | 'cancel_withdrawal'
+    | 'edit_purchase';
   id: string;
   note?: string;
   reference?: string;
+  quantity?: number | string;
 }
 
 // Acciones del admin sobre transacciones. Los RPCs son atómicos:
@@ -146,6 +218,114 @@ export async function POST(req: NextRequest) {
       });
       if (rpcError) return NextResponse.json({ error: rpcError.message }, { status: 400 });
       return NextResponse.json({ ok: true });
+    }
+
+    // Corregir una compra pendiente: la cantidad de tickets (si el
+    // pago no cuadra con lo solicitado) o la referencia (si el
+    // jugador la escribió mal). Tras el arreglo se reintenta la
+    // validación automática de inmediato.
+    if (body.action === 'edit_purchase') {
+      const { data: purchase } = await admin
+        .from('ticket_purchases')
+        .select('id, status, quantity, reference, status_note, exchange_rate_used')
+        .eq('id', id)
+        .single();
+      if (!purchase) {
+        return NextResponse.json({ error: 'Compra no encontrada' }, { status: 404 });
+      }
+      if (purchase.status === 'aprobado') {
+        return NextResponse.json(
+          {
+            error:
+              'La compra ya está aprobada: para corregirla, recházala (se descuentan los tickets) y apruébala de nuevo con los datos correctos.',
+          },
+          { status: 400 }
+        );
+      }
+      if (purchase.status === 'rechazado') {
+        return NextResponse.json(
+          { error: 'La compra está rechazada: el jugador debe registrar el pago de nuevo.' },
+          { status: 400 }
+        );
+      }
+
+      const updates: Record<string, unknown> = {};
+      const changed: string[] = [];
+
+      if (body.quantity !== undefined) {
+        const qty = Math.trunc(Number(body.quantity));
+        if (!Number.isFinite(qty) || qty < 1 || qty > MAX_TICKETS_PER_PURCHASE) {
+          return NextResponse.json(
+            { error: `Cantidad inválida (1 a ${MAX_TICKETS_PER_PURCHASE})` },
+            { status: 400 }
+          );
+        }
+        if (qty !== purchase.quantity) {
+          const amountUsd = Math.round(qty * TICKET_PRICE_USD * 100) / 100;
+          const rate = purchase.exchange_rate_used;
+          updates.quantity = qty;
+          updates.amount_usd = amountUsd;
+          updates.amount_ves = rate ? Math.round(amountUsd * Number(rate) * 100) / 100 : null;
+          changed.push(`cantidad ajustada a ${qty} ticket(s)`);
+        }
+      }
+
+      if (body.reference !== undefined) {
+        const reference = String(body.reference).trim();
+        if (reference.length < 4 || reference.length > 40) {
+          return NextResponse.json({ error: 'Escribe una referencia válida' }, { status: 400 });
+        }
+        if (reference !== purchase.reference) {
+          const norm = reference.toLowerCase().replace(/\s/g, '');
+          const { data: dups } = await admin
+            .from('ticket_purchases')
+            .select('id')
+            .eq('reference_norm', norm)
+            .neq('status', 'rechazado')
+            .neq('id', id)
+            .limit(1);
+          if ((dups?.length ?? 0) > 0) {
+            return NextResponse.json(
+              { error: 'Esa referencia ya está usada en otra compra.' },
+              { status: 409 }
+            );
+          }
+          updates.reference = reference;
+          changed.push('referencia corregida');
+        }
+      }
+
+      if (changed.length === 0) {
+        return NextResponse.json({ ok: true, result: { status: purchase.status } });
+      }
+
+      // Si la referencia sigue siendo la repetida, la nota-marcador se
+      // conserva (mantiene la compra en revisión 100% manual). Al
+      // corregirla ya comprobamos que es única: la nota se reemplaza y
+      // la validación automática vuelve a intentarlo.
+      const keepDupNote =
+        updates.reference === undefined && purchase.status_note?.startsWith(DUPLICATE_MARKER);
+      if (!keepDupNote) {
+        updates.status_note = `✏️ Editada por el equipo: ${changed.join(' y ')}.`;
+      }
+      updates.status = 'pendiente';
+
+      const { error: updateError } = await admin
+        .from('ticket_purchases')
+        .update(updates)
+        .eq('id', id);
+      if (updateError) {
+        const msg = updateError.code === '23505'
+          ? 'Esa referencia ya está usada en otra compra.'
+          : updateError.message;
+        return NextResponse.json({ error: msg }, { status: 400 });
+      }
+
+      if (!keepDupNote) {
+        const result = await tryAutoValidatePurchase(id);
+        return NextResponse.json({ ok: true, result });
+      }
+      return NextResponse.json({ ok: true, result: { status: 'pendiente' } });
     }
 
     if (body.action === 'pay_withdrawal') {

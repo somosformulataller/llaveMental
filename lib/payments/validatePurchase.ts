@@ -51,6 +51,22 @@ export async function tryAutoValidatePurchase(purchaseId: string): Promise<AutoV
 
   await admin.from('ticket_purchases').update({ status: 'validando' }).eq('id', purchaseId);
 
+  // Bitácora de la consulta (panel: "verificado N veces, última hace X").
+  // En consulta aparte por si la migración 012 aún no corrió: si la
+  // columna no existe, falla sola sin tumbar la validación.
+  try {
+    const { count } = await admin
+      .from('ticket_purchases')
+      .select('check_count')
+      .eq('id', purchaseId)
+      .single()
+      .then((r) => ({ count: (r.data as { check_count?: number } | null)?.check_count ?? 0 }));
+    await admin
+      .from('ticket_purchases')
+      .update({ last_checked_at: new Date().toISOString(), check_count: count + 1 })
+      .eq('id', purchaseId);
+  } catch {}
+
   const result = await validatePayment({
     reference: purchase.reference,
     expectedVes: purchase.amount_ves === null ? null : Number(purchase.amount_ves),

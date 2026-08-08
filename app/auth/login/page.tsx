@@ -26,9 +26,11 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Error propio del campo cédula (p. ej. cédula ya registrada):
-  // se muestra DEBAJO del input para que se vea dónde está el problema
+  // Errores propios de un campo (p. ej. cédula o teléfono ya
+  // registrados): se muestran DEBAJO de su input para que se vea
+  // dónde está el problema
   const [cedulaError, setCedulaError] = useState<string | null>(null);
+  const [whatsappError, setWhatsappError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const router = useRouter();
@@ -38,6 +40,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setCedulaError(null);
+    setWhatsappError(null);
     setSuccess(null);
 
     if (isSignUp) {
@@ -72,12 +75,17 @@ export default function LoginPage() {
         const data = await res.json();
         if (!res.ok) {
           const msg = data.error || 'No se pudo crear la cuenta';
-          // Si el problema es la cédula, el detalle va bajo su input
-          // y arriba del botón queda el aviso general del registro.
-          if (msg.toLowerCase().includes('cédula') || msg.toLowerCase().includes('cedula')) {
+          const lower = msg.toLowerCase();
+          // Si el problema es la cédula o el teléfono, el detalle va
+          // bajo su input y arriba del botón queda el aviso general.
+          if (lower.includes('cédula') || lower.includes('cedula')) {
             setCedulaError(msg);
             setError('Hay un error en tu registro: revisa el número de cédula.');
             document.getElementById('cedula')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          } else if (lower.includes('teléfono') || lower.includes('telefono')) {
+            setWhatsappError(msg);
+            setError('Hay un error en tu registro: revisa el número de teléfono.');
+            document.getElementById('whatsapp')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
           } else {
             setError(msg);
           }
@@ -205,15 +213,25 @@ export default function LoginPage() {
                 <input
                   id="whatsapp"
                   type="tel"
-                  className="form-input"
+                  className={`form-input ${whatsappError ? 'form-input-error' : ''}`}
                   placeholder="04121234567"
                   value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value.replace(/[^\d+]/g, ''))}
+                  onChange={(e) => {
+                    setWhatsapp(e.target.value.replace(/[^\d+]/g, ''));
+                    setWhatsappError(null);
+                  }}
                   required
                   minLength={7}
                   maxLength={15}
                   autoComplete="tel"
+                  aria-invalid={!!whatsappError}
+                  aria-describedby={whatsappError ? 'whatsapp-error' : undefined}
                 />
+                {whatsappError && (
+                  <p className="field-error" id="whatsapp-error" role="alert">
+                    ⚠️ {whatsappError}
+                  </p>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label" htmlFor="cedula">Cédula</label>
@@ -313,7 +331,7 @@ export default function LoginPage() {
           {isSignUp ? '¿Ya tienes cuenta? ' : '¿No tienes cuenta? '}
           <a
             href="#"
-            onClick={(e) => { e.preventDefault(); setIsSignUp(!isSignUp); setError(null); setCedulaError(null); setSuccess(null); }}
+            onClick={(e) => { e.preventDefault(); setIsSignUp(!isSignUp); setError(null); setCedulaError(null); setWhatsappError(null); setSuccess(null); }}
           >
             {isSignUp ? 'Inicia sesión' : 'Regístrate'}
           </a>

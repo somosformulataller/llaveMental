@@ -30,6 +30,14 @@ const fmtDate = (iso: string | null) =>
       })
     : '—';
 
+// "hace 3 min" — para la última consulta al banco de cada compra
+const fmtAgo = (iso: string) => {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (mins < 1) return 'hace un momento';
+  if (mins < 60) return `hace ${mins} min`;
+  return `hace ${Math.floor(mins / 60)} h`;
+};
+
 const EVENT_LABEL: Record<AppEventRow['event_type'], string> = {
   login: '🔐 Inició sesión',
   app_open: '📲 Abrió la app',
@@ -149,7 +157,7 @@ export default function AdminPage() {
   const [flowPlayer, setFlowPlayer] = useState<string | null>(null);
   const [flowEvents, setFlowEvents] = useState<AppEventRow[]>([]);
   const [purchaseFilter, setPurchaseFilter] = useState<
-    'pendientes' | 'aprobadas' | 'rechazadas' | 'todas'
+    'pendientes' | 'banco' | 'aprobadas' | 'rechazadas' | 'todas'
   >('pendientes');
   const [withdrawalFilter, setWithdrawalFilter] = useState<
     'pendientes' | 'pagados' | 'cancelados' | 'todos'
@@ -293,6 +301,35 @@ export default function AdminPage() {
     doAction({ action: 'reject_purchase', id: p.id, note: note.trim() });
   };
 
+  // Corregir la cantidad de tickets: cuando el pago real no cuadra
+  // con lo que el jugador solicitó (el monto esperado se recalcula).
+  const editQuantity = (p: AdminPurchaseRow) => {
+    const input = prompt(
+      `Cantidad de tickets a aprobar para ${p.username || p.player_id.slice(0, 8)}\n` +
+        `(solicitó ${p.quantity} 🎟️ = ${fmt(Number(p.amount_usd))}). El monto esperado se recalcula:`,
+      String(p.quantity)
+    );
+    if (input === null) return;
+    const qty = Number(input.trim());
+    if (!Number.isInteger(qty) || qty < 1 || qty > 50) {
+      alert('Cantidad inválida (1 a 50).');
+      return;
+    }
+    if (qty === p.quantity) return;
+    doAction({ action: 'edit_purchase', id: p.id, quantity: String(qty) });
+  };
+
+  // Corregir la referencia: cuando el jugador la escribió mal. Tras
+  // el cambio, el banco la verifica de nuevo enseguida.
+  const editReference = (p: AdminPurchaseRow) => {
+    const input = prompt(
+      'Nuevo número de referencia del pago (se volverá a verificar con el banco):',
+      p.reference
+    );
+    if (!input?.trim() || input.trim() === p.reference) return;
+    doAction({ action: 'edit_purchase', id: p.id, reference: input.trim() });
+  };
+
   const payWithdrawal = (w: AdminWithdrawalRow) => {
     const reference = prompt(
       `Retiro de ${fmt(Number(w.amount_usd))} a ${w.username || 'jugador'}.\n` +
@@ -410,12 +447,18 @@ export default function AdminPage() {
   const searchedPurchases = purchases.filter(matchesTx);
   const searchedWithdrawals = withdrawals.filter(matchesTx);
 
-  // Cada compra vive en SU filtro: al aprobar o rechazar una pendiente
-  // pasa de lista ("validando" cuenta como pendiente: es transitorio).
+  // Cada compra vive en SU filtro. Las no resueltas se separan en dos:
+  // las que el banco sigue verificando solo (🏦 En proceso) y las que
+  // esperan una decisión del equipo (🕒 Pendientes: referencias
+  // repetidas, montos que no cuadran, etc.).
+  const inBankQueue = (p: AdminPurchaseRow) =>
+    p.bank_state === 'esperando_banco' || p.bank_state === 'consultando';
+  const unresolvedPurchases = searchedPurchases.filter(
+    (p) => p.status === 'pendiente' || p.status === 'validando'
+  );
   const purchaseBuckets = {
-    pendientes: searchedPurchases.filter(
-      (p) => p.status === 'pendiente' || p.status === 'validando'
-    ),
+    pendientes: unresolvedPurchases.filter((p) => !inBankQueue(p)),
+    banco: unresolvedPurchases.filter(inBankQueue),
     aprobadas: searchedPurchases.filter((p) => p.status === 'aprobado'),
     rechazadas: searchedPurchases.filter((p) => p.status === 'rechazado'),
     todas: searchedPurchases,
@@ -667,6 +710,12 @@ export default function AdminPage() {
                     🕒 Pendientes ({purchaseBuckets.pendientes.length})
                   </button>
                   <button
+                    className={`btn-mini ${purchaseFilter === 'banco' ? 'btn-mini-active' : ''}`}
+                    onClick={() => setPurchaseFilter('banco')}
+                  >
+                    🏦 En proceso (banco) ({purchaseBuckets.banco.length})
+                  </button>
+                  <button
                     className={`btn-mini ${purchaseFilter === 'aprobadas' ? 'btn-mini-active' : ''}`}
                     onClick={() => setPurchaseFilter('aprobadas')}
                   >
@@ -685,7 +734,9 @@ export default function AdminPage() {
                     Todas ({searchedPurchases.length})
                   </button>
                   <span className="admin-hint">
-                    La validación automática nunca rechaza: rechazar es siempre decisión tuya.
+                    🏦 En proceso: el banco las sigue verificando solo y las aprueba al confirmar
+                    el pago. 🕒 Pendientes: esperan una decisión del equipo. La validación
+                    automática nunca rechaza: rechazar es siempre decisión tuya.
                   </span>
                 </div>
                 <div className="admin-table-wrap">
@@ -731,6 +782,27 @@ export default function AdminPage() {
                             <span className={`status-badge status-${p.status}`}>
                               {PURCHASE_STATUS_LABEL[p.status]}
                             </span>
+                            {p.bank_state === 'esperando_banco' && (
+                              <div className="admin-note bank-note">
+                                🏦 Esperando validación del banco — próximo intento en ≤
+                                {p.eta_minutes ?? 5} min
+                                {p.queue_position && p.queue_position > 1
+                                  ? ` (puesto ${p.queue_position} en la cola)`
+                                  : ''}
+                                {p.check_count
+                                  ? ` · consultado ${p.check_count} ${p.check_count === 1 ? 'vez' : 'veces'}`
+                                  : ''}
+                                {p.last_checked_at ? ` · última ${fmtAgo(p.last_checked_at)}` : ''}
+                              </div>
+                            )}
+                            {p.bank_state === 'consultando' && (
+                              <div className="admin-note bank-note">
+                                🏦 Consultando al banco en este momento…
+                              </div>
+                            )}
+                            {p.bank_state === 'revision_manual' && (
+                              <div className="admin-note">👤 Requiere revisión manual del equipo</div>
+                            )}
                             {p.status_note && (
                               <div
                                 className={`admin-note ${
@@ -748,6 +820,16 @@ export default function AdminPage() {
                                 ✓ Aprobar
                               </button>
                             )}
+                            {(p.status === 'pendiente' || p.status === 'validando') && (
+                              <>
+                                <button className="btn-mini" onClick={() => editQuantity(p)} disabled={busy}>
+                                  🎟️ Cantidad
+                                </button>
+                                <button className="btn-mini" onClick={() => editReference(p)} disabled={busy}>
+                                  ✏️ Referencia
+                                </button>
+                              </>
+                            )}
                             {p.status !== 'rechazado' && (
                               <button className="btn-mini btn-danger" onClick={() => rejectPurchase(p)} disabled={busy}>
                                 ✕ Rechazar
@@ -763,7 +845,11 @@ export default function AdminPage() {
                           <td colSpan={7}>
                             {tq
                               ? 'Sin resultados para esa búsqueda.'
-                              : `Sin compras ${purchaseFilter === 'todas' ? 'todavía' : purchaseFilter}`}
+                              : purchaseFilter === 'todas'
+                              ? 'Sin compras todavía'
+                              : purchaseFilter === 'banco'
+                              ? 'Ninguna compra en proceso de validación del banco'
+                              : `Sin compras ${purchaseFilter}`}
                           </td>
                         </tr>
                       )}
