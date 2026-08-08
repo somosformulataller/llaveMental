@@ -151,6 +151,9 @@ export async function POST(req: NextRequest) {
 
       // Acreditar el premio al saldo retirable (RPC atómico), MENOS
       // los adelantos ya pagados durante los fallos de esta partida.
+      // Con la tabla vigente las monedas suman el premio COMPLETO,
+      // así que aquí queda $0: la puerta solo muestra el total. El
+      // resto cubre sesiones selladas con tablas viejas.
       const failCount = updatedKeysTried.length - 1;
       const advancesPaid = tierAdvances
         .filter((a) => a.fail <= failCount)

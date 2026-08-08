@@ -328,12 +328,16 @@ export default function GameBoard() {
         setTimeout(() => {
           setTreasurePrize(null);
           setWinBanner(data.payout);
-          // Sumar solo lo acreditado al abrir: los adelantos ya se
-          // sumaron al saldo cuando salieron las monedas.
-          if (player) updateBalance(player.balance + (data.credited ?? data.payout));
-          burstSeq.current += 1;
-          setCoinBurst(burstSeq.current);
-          setTimeout(() => setCoinBurst(null), 1700);
+          // El premio completo ya entró al saldo con las monedas
+          // ocultas: al abrir no se suma nada más. Solo las sesiones
+          // viejas (sin monedas) acreditan aquí lo que falte.
+          const credited = data.credited ?? data.payout;
+          if (credited > 0) {
+            if (player) updateBalance(player.balance + credited);
+            burstSeq.current += 1;
+            setCoinBurst(burstSeq.current);
+            setTimeout(() => setCoinBurst(null), 1700);
+          }
         }, 5200 + shift);
         // Tras el tesoro NO se reinicia sola: la cámara vuelve a las
         // llaves con los valores de ESTA jugada visibles, y la escena
